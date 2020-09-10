@@ -444,8 +444,3 @@ bool NewFuzzer::find_threads(ModelAction * pending_read)
 
 	return finds_waiting_for;
 }
-
-bool NewFuzzer::shouldWait(const ModelAction * act)
-{
-	return true;
-}

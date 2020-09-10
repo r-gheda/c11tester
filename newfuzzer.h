@@ -32,7 +32,6 @@ public:
 	Thread * selectNotify(simple_action_list_t * waiters);
 	bool shouldSleep(const ModelAction * sleep);
 	bool shouldWake(const ModelAction * sleep);
-	bool shouldWait(const ModelAction * wait);
 
 	void register_engine(ModelChecker * model, ModelExecution * execution);
 	Predicate * get_selected_child_branch(thread_id_t tid);

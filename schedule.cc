@@ -98,7 +98,6 @@ bool Scheduler::is_enabled(thread_id_t tid) const
 /**
  * @brief Check if a Thread is currently in the sleep set
  * @param t The Thread to check
- * @return True if the Thread is currently enabled
  */
 bool Scheduler::is_sleep_set(const Thread *t) const
 {
@@ -139,6 +138,8 @@ enabled_type_t Scheduler::get_enabled(const Thread *t) const
 /**
  * Add a Thread to the sleep set.
  * @param t The Thread to add
+ * A Thread is in THREAD_SLEEP_SET if it is sleeping or blocked by a wait
+ * operation that should fail spuriously (decide by fuzzer).
  */
 void Scheduler::add_sleep(Thread *t)
 {

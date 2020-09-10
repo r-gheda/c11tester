@@ -247,30 +247,50 @@ void ModelExecution::restore_last_seq_num()
  * @param thread The thread that we might wake up
  * @return True, if we should wake up the sleeping thread; false otherwise
  */
-bool ModelExecution::should_wake_up(const ModelAction *curr, const Thread *thread) const
+bool ModelExecution::should_wake_up(const Thread *thread) const
 {
 	const ModelAction *asleep = thread->get_pending();
 
 	/* The sleep is literally sleeping */
-	if (asleep->is_sleep()) {
-		if (fuzzer->shouldWake(asleep))
-			return true;
+	switch (asleep->get_type()) {
+		case THREAD_SLEEP:
+			if (fuzzer->shouldWake(asleep))
+				return true;
+			break;
+		case ATOMIC_WAIT:
+		case ATOMIC_TIMEDWAIT:
+			if (fuzzer->waitShouldWakeUp(asleep))
+				return true;
+			break;
+		default:
+			return false;
 	}
 
 	return false;
 }
 
-void ModelExecution::wake_up_sleeping_actions(ModelAction *curr)
+void ModelExecution::wake_up_sleeping_actions()
 {
 	for (unsigned int i = 0;i < get_num_threads();i++) {
 		thread_id_t tid = int_to_id(i);
 		if (scheduler->is_sleep_set(tid)) {
 			Thread *thr = get_thread(tid);
-			if (should_wake_up(curr, thr)) {
+			if (should_wake_up(thr)) {
 				/* Remove this thread from sleep set */
 				scheduler->remove_sleep(thr);
-				if (thr->get_pending()->is_sleep())
+				ModelAction * pending = thr->get_pending();
+				if (pending->is_sleep()) {
 					thr->set_wakeup_state(true);
+				} else if (pending->is_wait()) {
+					thr->set_wakeup_state(true);
+					simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, pending->get_location());
+					for (sllnode<ModelAction *> * rit = waiters->begin();rit != NULL;rit=rit->getNext()) {
+						if (rit->getVal()->get_tid() == tid) {
+							waiters->erase(rit);
+							break;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -471,32 +491,26 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		break;
 	}
 	case ATOMIC_WAIT: {
-		//TODO: DOESN'T REALLY IMPLEMENT SPURIOUS WAKEUPS CORRECTLY
-		if (fuzzer->shouldWait(curr)) {
-			Thread *curr_thrd = get_thread(curr);
-			/* wake up the other threads */
-			for (unsigned int i = 0;i < get_num_threads();i++) {
-				Thread *t = get_thread(int_to_id(i));
-				if (t->waiting_on() == curr_thrd && t->get_pending()->is_lock())
-					scheduler->wake(t);
-			}
-
-			/* unlock the lock - after checking who was waiting on it */
-			state->locked = NULL;
-
-			/* remove old wait action and disable this thread */
-			simple_action_list_t * waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
-			for (sllnode<ModelAction *> * it = waiters->begin();it != NULL;it = it->getNext()) {
-				ModelAction * wait = it->getVal();
-				if (wait->get_tid() == curr->get_tid()) {
-					waiters->erase(it);
-					break;
-				}
-			}
-
-			waiters->push_back(curr);
-			scheduler->sleep(curr_thrd);
+		Thread *curr_thrd = get_thread(curr);
+		/* wake up the other threads */
+		for (unsigned int i = 0;i < get_num_threads();i++) {
+			Thread *t = get_thread(int_to_id(i));
+			if (t->waiting_on() == curr_thrd && t->get_pending()->is_lock())
+				scheduler->wake(t);
 		}
+
+		/* unlock the lock - after checking who was waiting on it */
+		state->locked = NULL;
+
+		/* disable this thread */
+		simple_action_list_t * waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
+		waiters->push_back(curr);
+		curr_thrd->set_pending(curr);	// Forbid this thread to stash a new action
+
+		if (fuzzer->waitShouldFail(curr))
+			scheduler->add_sleep(curr_thrd);	// Place this thread into THREAD_SLEEP_SET
+		else
+			scheduler->sleep(curr_thrd);
 
 		break;
 	}
@@ -528,7 +542,10 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
 		//activate all the waiting threads
 		for (sllnode<ModelAction *> * rit = waiters->begin();rit != NULL;rit=rit->getNext()) {
-			scheduler->wake(get_thread(rit->getVal()));
+			Thread * thread = get_thread(rit->getVal());
+			if (thread->get_state() != THREAD_COMPLETED)
+				scheduler->wake(thread);
+			thread->set_wakeup_state(true);
 		}
 		waiters->clear();
 		break;
@@ -537,7 +554,9 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		simple_action_list_t *waiters = get_safe_ptr_action(&condvar_waiters_map, curr->get_location());
 		if (waiters->size() != 0) {
 			Thread * thread = fuzzer->selectNotify(waiters);
-			scheduler->wake(thread);
+			if (thread->get_state() != THREAD_COMPLETED)
+				scheduler->wake(thread);
+			thread->set_wakeup_state(true);
 		}
 		break;
 	}
@@ -809,7 +828,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 	DBG();
 
-	wake_up_sleeping_actions(curr);
+	wake_up_sleeping_actions();
 
 	SnapVector<ModelAction *> * rf_set = NULL;
 	bool canprune = false;

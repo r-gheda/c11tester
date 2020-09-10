@@ -39,7 +39,29 @@ bool Fuzzer::shouldWake(const ModelAction *sleep) {
 	return ((sleep->get_time()+sleep->get_value()) < lcurrtime);
 }
 
-bool Fuzzer::shouldWait(const ModelAction * act)
+/* Decide whether wait should spuriously fail or not */
+bool Fuzzer::waitShouldFail(ModelAction * wait)
 {
-	return true;
+	if ((random() & 1) == 0) {
+		struct timespec currtime;
+        clock_gettime(CLOCK_MONOTONIC, &currtime);
+        uint64_t lcurrtime = currtime.tv_sec * 1000000000 + currtime.tv_nsec;
+
+		// The time after which wait fail spuriously, in nanoseconds
+		uint64_t time = random() % 1000000;
+		wait->set_time(time + lcurrtime);
+		return true;
+	}
+
+	return false;
+}
+
+bool Fuzzer::waitShouldWakeUp(const ModelAction * wait)
+{
+	uint64_t time_to_expire = wait->get_time();
+	struct timespec currtime;
+	clock_gettime(CLOCK_MONOTONIC, &currtime);
+	uint64_t lcurrtime = currtime.tv_sec * 1000000000 + currtime.tv_nsec;
+
+	return (time_to_expire < lcurrtime);
 }
