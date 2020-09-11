@@ -251,6 +251,10 @@ bool ModelAction::is_wait() const {
 	return type == ATOMIC_WAIT || type == ATOMIC_TIMEDWAIT;
 }
 
+bool ModelAction::is_timedwait() const {
+	return type == ATOMIC_TIMEDWAIT;
+}
+
 bool ModelAction::is_notify() const {
 	return type == ATOMIC_NOTIFY_ONE || type == ATOMIC_NOTIFY_ALL;
 }

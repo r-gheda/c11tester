@@ -385,7 +385,7 @@ Thread* ModelChecker::getNextThread(Thread *old)
 		}
 
 		ModelAction *act = thr->get_pending();
-		if (act && execution->is_enabled(tid)){
+		if (act && scheduler->is_enabled(tid)){
 			/* Don't schedule threads which should be disabled */
 			if (!execution->check_action_enabled(act)) {
 				scheduler->sleep(thr);

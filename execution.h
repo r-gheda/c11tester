@@ -99,7 +99,7 @@ public:
 	SNAPSHOTALLOC
 private:
 	int get_execution_number() const;
-	bool should_wake_up(const Thread *thread) const;
+	bool should_wake_up(const ModelAction * asleep) const;
 	void wake_up_sleeping_actions();
 	modelclock_t get_next_seq_num();
 	bool next_execution();

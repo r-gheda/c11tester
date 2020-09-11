@@ -17,6 +17,7 @@ public:
 	bool shouldWake(const ModelAction *sleep);
 	virtual bool waitShouldFail(ModelAction *wait);
 	bool waitShouldWakeUp(const ModelAction *wait);
+	bool randomizeWaitTime(ModelAction * timed_wait);
 	virtual void register_engine(ModelChecker * _model, ModelExecution * execution) {}
 	SNAPSHOTALLOC
 private:

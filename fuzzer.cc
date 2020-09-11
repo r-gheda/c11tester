@@ -58,10 +58,28 @@ bool Fuzzer::waitShouldFail(ModelAction * wait)
 
 bool Fuzzer::waitShouldWakeUp(const ModelAction * wait)
 {
-	uint64_t time_to_expire = wait->get_time();
 	struct timespec currtime;
 	clock_gettime(CLOCK_MONOTONIC, &currtime);
 	uint64_t lcurrtime = currtime.tv_sec * 1000000000 + currtime.tv_nsec;
 
-	return (time_to_expire < lcurrtime);
+	return (wait->get_time() < lcurrtime);
+}
+
+bool Fuzzer::randomizeWaitTime(ModelAction * timed_wait)
+{
+	uint64_t abstime = timed_wait->get_time();
+	struct timespec currtime;
+	clock_gettime(CLOCK_MONOTONIC, &currtime);
+	uint64_t lcurrtime = currtime.tv_sec * 1000000000 + currtime.tv_nsec;
+	if (abstime <= lcurrtime)
+		return false;
+
+	// Shorten wait time
+	if ((random() & 1) == 0) {
+		uint64_t tmp = abstime - lcurrtime;
+		uint64_t time_to_expire = random() % tmp + lcurrtime;
+		timed_wait->set_time(time_to_expire);
+	}
+
+	return true;
 }

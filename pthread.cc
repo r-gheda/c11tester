@@ -174,7 +174,6 @@ int pthread_cond_wait(pthread_cond_t *p_cond, pthread_mutex_t *p_mutex) {
 int pthread_cond_timedwait(pthread_cond_t *p_cond,
 													 pthread_mutex_t *p_mutex, const struct timespec *abstime) {
 	ModelExecution *execution = model->get_execution();
-
 	if ( !execution->getCondMap()->contains(p_cond) )
 		pthread_cond_init(p_cond, NULL);
 	if ( !execution->getMutexMap()->contains(p_mutex) )
@@ -183,10 +182,14 @@ int pthread_cond_timedwait(pthread_cond_t *p_cond,
 	cdsc::snapcondition_variable *v = execution->getCondMap()->get(p_cond);
 	cdsc::snapmutex *m = execution->getMutexMap()->get(p_mutex);
 
-	model->switch_thread(new ModelAction(ATOMIC_TIMEDWAIT, std::memory_order_seq_cst, v, (uint64_t) m));
+	uint64_t time = abstime->tv_sec * 1000000000 + abstime->tv_nsec;
+	ModelAction * timed_wait = new ModelAction(ATOMIC_TIMEDWAIT, std::memory_order_seq_cst, v, (uint64_t) m);
+	timed_wait->set_time(time);
+	if (model->switch_thread(timed_wait) == ETIMEDOUT) {
+		//model_print("thread %u wait timedout\n", thread_current_id());
+		return ETIMEDOUT;
+	}
 	m->lock();
-
-	// model_print("Timed_wait is called\n");
 	return 0;
 }
 

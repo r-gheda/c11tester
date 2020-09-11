@@ -140,6 +140,7 @@ public:
 	bool is_trylock() const;
 	bool is_unlock() const;
 	bool is_wait() const;
+	bool is_timedwait() const;
 	bool is_create() const;
 	bool is_notify() const;
 	bool is_notify_one() const;
