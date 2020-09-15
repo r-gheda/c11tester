@@ -19,6 +19,8 @@
 #include <condition_variable>
 #include "classlist.h"
 
+#define INITIAL_THREAD_ID       0
+
 struct PendingFutureValue {
 	PendingFutureValue(ModelAction *writer, ModelAction *reader) :
 		writer(writer), reader(reader)

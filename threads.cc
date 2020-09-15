@@ -419,7 +419,7 @@ Thread::Thread(thread_id_t tid) :
 	last_action_val(0),
 	model_thread(true)
 {
-	memset(&context, 0, sizeof(context));
+	real_memset(&context, 0, sizeof(context));
 }
 
 /**

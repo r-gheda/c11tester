@@ -113,7 +113,7 @@ public:
 
 	/** @brief Reset the table to its initial state. */
 	void reset() {
-		memset(table, 0, capacity * sizeof(struct hashlistnode<_Key, _Val>));
+		real_memset(table, 0, capacity * sizeof(struct hashlistnode<_Key, _Val>));
 		if (zero) {
 			_free(zero);
 			zero = NULL;

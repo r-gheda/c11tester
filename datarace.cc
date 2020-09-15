@@ -865,6 +865,9 @@ Exit:
 
 void raceCheckRead64(thread_id_t thread, const void *location)
 {
+	int old_flag = GET_MODEL_FLAG;
+	ENTER_MODEL_FLAG;
+
 	uint64_t old_shadowval, new_shadowval;
 	old_shadowval = new_shadowval = INVALIDSHADOWVAL;
 #ifdef COLLECT_STAT
@@ -893,6 +896,7 @@ void raceCheckRead64(thread_id_t thread, const void *location)
 		if (shadow[7]==old_shadowval)
 			shadow[7] = new_shadowval;
 		else goto L7;
+		RESTORE_MODEL_FLAG(old_flag);
 		return;
 	}
 
@@ -910,10 +914,14 @@ L6:
 	raceCheckRead_otherIt(thread, (const void *)(((uintptr_t)location) + 6));
 L7:
 	raceCheckRead_otherIt(thread, (const void *)(((uintptr_t)location) + 7));
+	RESTORE_MODEL_FLAG(old_flag);
 }
 
 void raceCheckRead32(thread_id_t thread, const void *location)
 {
+	int old_flag = GET_MODEL_FLAG;
+	ENTER_MODEL_FLAG;
+
 	uint64_t old_shadowval, new_shadowval;
 	old_shadowval = new_shadowval = INVALIDSHADOWVAL;
 #ifdef COLLECT_STAT
@@ -930,6 +938,7 @@ void raceCheckRead32(thread_id_t thread, const void *location)
 		if (shadow[3]==old_shadowval)
 			shadow[3] = new_shadowval;
 		else goto L3;
+		RESTORE_MODEL_FLAG(old_flag);
 		return;
 	}
 
@@ -939,10 +948,14 @@ L2:
 	raceCheckRead_otherIt(thread, (const void *)(((uintptr_t)location) + 2));
 L3:
 	raceCheckRead_otherIt(thread, (const void *)(((uintptr_t)location) + 3));
+	RESTORE_MODEL_FLAG(old_flag);
 }
 
 void raceCheckRead16(thread_id_t thread, const void *location)
 {
+	int old_flag = GET_MODEL_FLAG;
+	ENTER_MODEL_FLAG;
+
 	uint64_t old_shadowval, new_shadowval;
 	old_shadowval = new_shadowval = INVALIDSHADOWVAL;
 #ifdef COLLECT_STAT
@@ -952,20 +965,26 @@ void raceCheckRead16(thread_id_t thread, const void *location)
 	if (CHECKBOUNDARY(location, 1)) {
 		if (shadow[1]==old_shadowval) {
 			shadow[1] = new_shadowval;
+			RESTORE_MODEL_FLAG(old_flag);
 			return;
 		}
 	}
 	raceCheckRead_otherIt(thread, (const void *)(((uintptr_t)location) + 1));
+	RESTORE_MODEL_FLAG(old_flag);
 }
 
 void raceCheckRead8(thread_id_t thread, const void *location)
 {
+	int old_flag = GET_MODEL_FLAG;
+	ENTER_MODEL_FLAG;
+
 	uint64_t old_shadowval, new_shadowval;
 	old_shadowval = new_shadowval = INVALIDSHADOWVAL;
 #ifdef COLLECT_STAT
 	load8_count++;
 #endif
 	raceCheckRead_firstIt(thread, location, &old_shadowval, &new_shadowval);
+	RESTORE_MODEL_FLAG(old_flag);
 }
 
 static inline uint64_t * raceCheckWrite_firstIt(thread_id_t thread, const void * location, uint64_t *old_val, uint64_t *new_val)
@@ -1110,6 +1129,8 @@ Exit:
 
 void raceCheckWrite64(thread_id_t thread, const void *location)
 {
+	int old_flag = GET_MODEL_FLAG;
+	ENTER_MODEL_FLAG;
 	uint64_t old_shadowval, new_shadowval;
 	old_shadowval = new_shadowval = INVALIDSHADOWVAL;
 #ifdef COLLECT_STAT
@@ -1138,6 +1159,7 @@ void raceCheckWrite64(thread_id_t thread, const void *location)
 		if (shadow[7]==old_shadowval)
 			shadow[7] = new_shadowval;
 		else goto L7;
+		RESTORE_MODEL_FLAG(old_flag);
 		return;
 	}
 
@@ -1155,10 +1177,14 @@ L6:
 	raceCheckWrite_otherIt(thread, (const void *)(((uintptr_t)location) + 6));
 L7:
 	raceCheckWrite_otherIt(thread, (const void *)(((uintptr_t)location) + 7));
+	RESTORE_MODEL_FLAG(old_flag);
 }
 
 void raceCheckWrite32(thread_id_t thread, const void *location)
 {
+	int old_flag = GET_MODEL_FLAG;
+	ENTER_MODEL_FLAG;
+
 	uint64_t old_shadowval, new_shadowval;
 	old_shadowval = new_shadowval = INVALIDSHADOWVAL;
 #ifdef COLLECT_STAT
@@ -1175,6 +1201,7 @@ void raceCheckWrite32(thread_id_t thread, const void *location)
 		if (shadow[3]==old_shadowval)
 			shadow[3] = new_shadowval;
 		else goto L3;
+		RESTORE_MODEL_FLAG(old_flag);
 		return;
 	}
 
@@ -1184,10 +1211,14 @@ L2:
 	raceCheckWrite_otherIt(thread, (const void *)(((uintptr_t)location) + 2));
 L3:
 	raceCheckWrite_otherIt(thread, (const void *)(((uintptr_t)location) + 3));
+	RESTORE_MODEL_FLAG(old_flag);
 }
 
 void raceCheckWrite16(thread_id_t thread, const void *location)
 {
+	int old_flag = GET_MODEL_FLAG;
+	ENTER_MODEL_FLAG;
+
 	uint64_t old_shadowval, new_shadowval;
 	old_shadowval = new_shadowval = INVALIDSHADOWVAL;
 #ifdef COLLECT_STAT
@@ -1198,20 +1229,26 @@ void raceCheckWrite16(thread_id_t thread, const void *location)
 	if (CHECKBOUNDARY(location, 1)) {
 		if (shadow[1]==old_shadowval) {
 			shadow[1] = new_shadowval;
+			RESTORE_MODEL_FLAG(old_flag);
 			return;
 		}
 	}
 	raceCheckWrite_otherIt(thread, (const void *)(((uintptr_t)location) + 1));
+	RESTORE_MODEL_FLAG(old_flag);
 }
 
 void raceCheckWrite8(thread_id_t thread, const void *location)
 {
+	int old_flag = GET_MODEL_FLAG;
+	ENTER_MODEL_FLAG;
+
 	uint64_t old_shadowval, new_shadowval;
 	old_shadowval = new_shadowval = INVALIDSHADOWVAL;
 #ifdef COLLECT_STAT
 	store8_count++;
 #endif
 	raceCheckWrite_firstIt(thread, location, &old_shadowval, &new_shadowval);
+	RESTORE_MODEL_FLAG(old_flag);
 }
 
 #ifdef COLLECT_STAT

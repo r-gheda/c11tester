@@ -18,6 +18,11 @@
 #include "classlist.h"
 #include "snapshot-interface.h"
 
+#define ENTER_MODEL_FLAG (inside_model = 1)
+#define EXIT_MODEL_FLAG (inside_model = 0)
+#define GET_MODEL_FLAG (inside_model)
+#define RESTORE_MODEL_FLAG(f) (inside_model = f)
+
 /** @brief Model checker execution stats */
 struct execution_stats {
 	int num_total;	/**< @brief Total number of executions */

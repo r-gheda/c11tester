@@ -18,8 +18,6 @@
 #include "fuzzer.h"
 #include "newfuzzer.h"
 
-#define INITIAL_THREAD_ID       0
-
 #ifdef COLLECT_STAT
 static unsigned int atomic_load_count = 0;
 static unsigned int atomic_store_count = 0;
@@ -89,8 +87,6 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	isfinished(false)
 {
 	/* Initialize a model-checker thread, for special ModelActions */
-	model_thread = new Thread(get_next_id());
-	add_thread(model_thread);
 	fuzzer->register_engine(m, this);
 	scheduler->register_engine(this);
 #ifdef TLS
