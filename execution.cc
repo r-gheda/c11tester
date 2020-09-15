@@ -87,6 +87,8 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	isfinished(false)
 {
 	/* Initialize a model-checker thread, for special ModelActions */
+	model_thread = new Thread(get_next_id());
+	add_thread(model_thread);
 	fuzzer->register_engine(m, this);
 	scheduler->register_engine(this);
 #ifdef TLS
@@ -97,7 +99,7 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 /** @brief Destructor */
 ModelExecution::~ModelExecution()
 {
-	for (unsigned int i = 0;i < get_num_threads();i++)
+	for (unsigned int i = INITIAL_THREAD_ID;i < get_num_threads();i++)
 		delete get_thread(int_to_id(i));
 
 	delete mo_graph;
@@ -266,7 +268,7 @@ bool ModelExecution::should_wake_up(const ModelAction * asleep) const
 
 void ModelExecution::wake_up_sleeping_actions()
 {
-	for (unsigned int i = 0;i < get_num_threads();i++) {
+	for (unsigned int i = MAIN_THREAD_ID;i < get_num_threads();i++) {
 		thread_id_t tid = int_to_id(i);
 		if (scheduler->is_sleep_set(tid)) {
 			Thread *thr = get_thread(tid);
@@ -345,7 +347,7 @@ void ModelExecution::set_assert()
 bool ModelExecution::is_deadlocked() const
 {
 	bool blocking_threads = false;
-	for (unsigned int i = 0;i < get_num_threads();i++) {
+	for (unsigned int i = MAIN_THREAD_ID;i < get_num_threads();i++) {
 		thread_id_t tid = int_to_id(i);
 		if (is_enabled(tid))
 			return false;
@@ -365,7 +367,7 @@ bool ModelExecution::is_deadlocked() const
  */
 bool ModelExecution::is_complete_execution() const
 {
-	for (unsigned int i = 0;i < get_num_threads();i++)
+	for (unsigned int i = MAIN_THREAD_ID;i < get_num_threads();i++)
 		if (is_enabled(int_to_id(i)))
 			return false;
 	return true;
@@ -494,7 +496,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 	case ATOMIC_WAIT: {
 		Thread *curr_thrd = get_thread(curr);
 		/* wake up the other threads */
-		for (unsigned int i = 0;i < get_num_threads();i++) {
+		for (unsigned int i = MAIN_THREAD_ID;i < get_num_threads();i++) {
 			Thread *t = get_thread(int_to_id(i));
 			if (t->waiting_on() == curr_thrd && t->get_pending()->is_lock())
 				scheduler->wake(t);
@@ -523,7 +525,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		}
 
 		/* wake up the other threads */
-		for (unsigned int i = 0;i < get_num_threads();i++) {
+		for (unsigned int i = MAIN_THREAD_ID;i < get_num_threads();i++) {
 			Thread *t = get_thread(int_to_id(i));
 			if (t->waiting_on() == curr_thrd && t->get_pending()->is_lock())
 				scheduler->wake(t);
@@ -543,7 +545,7 @@ bool ModelExecution::process_mutex(ModelAction *curr)
 		// TODO: lock count for recursive mutexes
 		/* wake up the other threads */
 		Thread *curr_thrd = get_thread(curr);
-		for (unsigned int i = 0;i < get_num_threads();i++) {
+		for (unsigned int i = MAIN_THREAD_ID;i < get_num_threads();i++) {
 			Thread *t = get_thread(int_to_id(i));
 			if (t->waiting_on() == curr_thrd && t->get_pending()->is_lock())
 				scheduler->wake(t);
@@ -675,7 +677,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 		}
 
 		/* Wake up any joining threads */
-		for (unsigned int i = 0;i < get_num_threads();i++) {
+		for (unsigned int i = MAIN_THREAD_ID;i < get_num_threads();i++) {
 			Thread *waiting = get_thread(int_to_id(i));
 			if (waiting->waiting_on() == th &&
 					waiting->get_pending()->is_thread_join())

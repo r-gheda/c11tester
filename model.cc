@@ -75,7 +75,7 @@ ModelChecker::ModelChecker() :
 	history(new ModelHistory()),
 	execution(new ModelExecution(this, scheduler)),
 	execution_number(1),
-	curr_thread_num(INITIAL_THREAD_ID),
+	curr_thread_num(MAIN_THREAD_ID),
 	trace_analyses(),
 	inspect_plugin(NULL)
 {
@@ -353,7 +353,7 @@ void ModelChecker::startRunExecution(Thread *old) {
 			execution->collectActions();
 		}
 
-		curr_thread_num = INITIAL_THREAD_ID;
+		curr_thread_num = MAIN_THREAD_ID;
 		Thread *thr = getNextThread(old);
 		if (thr != nullptr) {
 			scheduler->set_current_thread(thr);
@@ -421,7 +421,7 @@ void ModelChecker::finishRunExecution(Thread *old)
 	scheduler->set_current_thread(NULL);
 
 	/** Reset curr_thread_num to initial value for next execution. */
-	curr_thread_num = INITIAL_THREAD_ID;
+	curr_thread_num = MAIN_THREAD_ID;
 
 	/** If we have more executions, we won't make it past this call. */
 	finish_execution(execution_number < params.maxexecutions);
