@@ -59,7 +59,7 @@ void Scheduler::set_enabled(Thread *t, enabled_type_t enabled_status) {
 		enabled_type_t *new_enabled = (enabled_type_t *)snapshot_malloc(sizeof(enabled_type_t) * (threadid + 1));
 		memset(&new_enabled[enabled_len], 0, (threadid + 1 - enabled_len) * sizeof(enabled_type_t));
 		if (enabled != NULL) {
-			memcpy(new_enabled, enabled, enabled_len * sizeof(enabled_type_t));
+			real_memcpy(new_enabled, enabled, enabled_len * sizeof(enabled_type_t));
 			snapshot_free(enabled);
 		}
 		enabled = new_enabled;

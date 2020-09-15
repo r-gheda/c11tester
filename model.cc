@@ -21,6 +21,7 @@
 #include "plugins.h"
 
 ModelChecker *model = NULL;
+int inside_model = 0;
 
 void placeholder(void *) {
 	ASSERT(0);
@@ -80,6 +81,7 @@ ModelChecker::ModelChecker() :
 							"Copyright (c) 2013 and 2019 Regents of the University of California. All rights reserved.\n"
 							"Distributed under the GPLv2\n"
 							"Written by Weiyu Luo, Brian Norris, and Brian Demsky\n\n");
+	init_memory_ops();
 	memset(&stats,0,sizeof(struct execution_stats));
 	init_thread = new Thread(execution->get_next_id(), (thrd_t *) model_malloc(sizeof(thrd_t)), &placeholder, NULL, NULL);
 #ifdef TLS
@@ -353,7 +355,7 @@ void ModelChecker::startRunExecution(Thread *old) {
 		Thread *thr = getNextThread(old);
 		if (thr != nullptr) {
 			scheduler->set_current_thread(thr);
-
+			inside_model = 0;
 			if (Thread::swap(old, thr) < 0) {
 				perror("swap threads");
 				exit(EXIT_FAILURE);
@@ -452,6 +454,8 @@ uint64_t ModelChecker::switch_thread(ModelAction *act)
 		delete act;
 		return 0;
 	}
+	inside_model = 1;
+
 	DBG();
 	Thread *old = thread_current();
 	old->set_state(THREAD_READY);

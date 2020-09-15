@@ -575,8 +575,8 @@ struct DataRace * fullRaceCheckRead(thread_id_t thread, const void *location, ui
 			int newCapacity = copytoindex * 2;
 			thread_id_t *newthread = (thread_id_t *)snapshot_malloc(sizeof(thread_id_t) * newCapacity);
 			modelclock_t *newreadClock = (modelclock_t *)snapshot_malloc(sizeof(modelclock_t) * newCapacity);
-			std::memcpy(newthread, record->thread, copytoindex * sizeof(thread_id_t));
-			std::memcpy(newreadClock, record->readClock, copytoindex * sizeof(modelclock_t));
+			real_memcpy(newthread, record->thread, copytoindex * sizeof(thread_id_t));
+			real_memcpy(newreadClock, record->readClock, copytoindex * sizeof(modelclock_t));
 			snapshot_free(record->readClock);
 			snapshot_free(record->thread);
 			record->readClock = newreadClock;

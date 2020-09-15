@@ -63,6 +63,8 @@ extern mspace sStaticSpace;
 void * Thread_malloc(size_t size);
 void Thread_free(void *ptr);
 
+void init_memory_ops();
+
 /** @brief Provides a non-snapshotting allocator for use in STL classes.
  *
  * The code was adapted from a code example from the book The C++
@@ -259,6 +261,11 @@ extern mspace create_mspace_with_base(void* base, size_t capacity, int locked);
 extern mspace create_mspace(size_t capacity, int locked);
 
 extern mspace model_snapshot_space;
+
+extern void * (*volatile real_memcpy)(void * dst, const void *src, size_t n);
+extern void * (*volatile real_memmove)(void * dst, const void *src, size_t len);
+extern void (*volatile real_bzero)(void * dst, size_t len);
+extern void * (*volatile real_memset)(void * dst, int c, size_t len);
 
 #ifdef __cplusplus
 };	/* end of extern "C" */

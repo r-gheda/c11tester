@@ -110,3 +110,69 @@ void Thread_free(void *ptr)
 {
 	snapshot_free(ptr);
 }
+
+void * (*volatile real_memcpy)(void * dst, const void *src, size_t n) = NULL;
+void * (*volatile real_memmove)(void * dst, const void *src, size_t len) = NULL;
+void (*volatile real_bzero)(void * dst, size_t len) = NULL;
+void * (*volatile real_memset)(void * dst, int c, size_t len) = NULL;
+
+void init_memory_ops()
+{
+	if (!real_memcpy) {
+		real_memcpy = (void * (*)(void * dst, const void *src, size_t n)) 1;
+		real_memcpy = (void * (*)(void * dst, const void *src, size_t n))dlsym(RTLD_NEXT, "memcpy");
+	}
+	if (!real_memmove) {
+		real_memmove = (void * (*)(void * dst, const void *src, size_t n)) 1;
+		real_memmove = (void * (*)(void * dst, const void *src, size_t n))dlsym(RTLD_NEXT, "memmove");
+	}
+	if (!real_memset) {
+		real_memset = (void * (*)(void * dst, int c, size_t n)) 1;
+		real_memset = (void * (*)(void * dst, int c, size_t n))dlsym(RTLD_NEXT, "memset");
+	}
+	if (!real_bzero) {
+		real_bzero = (void (*)(void * dst, size_t len)) 1;
+		real_bzero = (void (*)(void * dst, size_t len))dlsym(RTLD_NEXT, "bzero");
+	}
+}
+
+void * memcpy(void * dst, const void * src, size_t n) {
+	if (false && model && !inside_model) {
+		thread_id_t tid = thread_current_id();
+		if (((uintptr_t)src&7) == 0 && ((uintptr_t)dst&7) == 0 && (n&7) == 0) {
+			for (uint i = 0; i < (n>>3); i++) {
+				raceCheckRead64(tid, (void *)(((char *)src) + i));
+				((volatile uint64_t *)dst)[i] = ((uint64_t *)src)[i];
+				raceCheckWrite64(tid, (void *)(((char *)src) + i));
+			}
+		} else if (((uintptr_t)src&3) == 0 && ((uintptr_t)dst&3) == 0 && (n&3) == 0) {
+			for (uint i = 0; i < (n>>2); i++) {
+				raceCheckRead32(tid, (void *)(((char *)src) + i));
+				((volatile uint32_t *)dst)[i] = ((uint32_t *)src)[i];
+				raceCheckWrite32(tid, (void *)(((char *)src) + i));
+			}
+		} else if (((uintptr_t)src&1) == 0 && ((uintptr_t)dst&1) == 0 && (n&1) == 0) {
+			for (uint i = 0; i < (n>>1); i++) {
+				raceCheckRead16(tid, (void *)(((char *)src) + i));
+				((volatile uint16_t *)dst)[i] = ((uint16_t *)src)[i];
+				raceCheckWrite16(tid, (void *)(((char *)src) + i));
+			}
+		} else {
+			for(uint i=0;i<n;i++) {
+				raceCheckRead8(tid, (void *)(((char *)src) + i));
+				((volatile char *)dst)[i] = ((char *)src)[i];
+				raceCheckWrite8(tid, (void *)(((char *)src) + i));
+			}
+		}
+	} else {
+		if (((uintptr_t)real_memcpy) < 2) {
+			for(uint i=0;i<n;i++) {
+				((volatile char *)dst)[i] = ((char *)src)[i];
+			}
+			return dst;
+		}
+
+		return real_memcpy(dst, src, n);
+	}
+	return dst;
+}

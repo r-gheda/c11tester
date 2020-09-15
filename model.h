@@ -104,6 +104,7 @@ private:
 	void print_stats() const;
 };
 
+extern int inside_model;
 extern ModelChecker *model;
 void parse_options(struct model_params *params);
 void install_trace_analyses(ModelExecution *execution);

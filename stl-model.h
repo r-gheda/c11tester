@@ -369,7 +369,7 @@ public:
 		_size(_capacity),
 		capacity(_capacity),
 		array((type *) model_malloc(sizeof(type) * _capacity)) {
-		memcpy(array, _array, capacity * sizeof(type));
+		real_memcpy(array, _array, capacity * sizeof(type));
 	}
 	void pop_back() {
 		_size--;
@@ -474,7 +474,7 @@ public:
 		_size(_capacity),
 		capacity(_capacity),
 		array((type *) snapshot_malloc(sizeof(type) * _capacity)) {
-		memcpy(array, _array, capacity * sizeof(type));
+		real_memcpy(array, _array, capacity * sizeof(type));
 	}
 	void pop_back() {
 		_size--;

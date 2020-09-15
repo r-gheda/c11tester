@@ -114,7 +114,7 @@ void parse_options(struct model_params *params) {
 	}
 	argc++;	//first parameter is executable name
 	char optcpy[index + 1];
-	memcpy(optcpy, options, index+1);
+	real_memcpy(optcpy, options, index+1);
 	char * argv[argc + 1];
 	argv[0] = NULL;
 	argv[1] = optcpy;
