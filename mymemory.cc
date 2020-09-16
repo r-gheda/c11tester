@@ -138,199 +138,63 @@ void init_memory_ops()
 
 void * memcpy(void * dst, const void * src, size_t n) {
 	if (model && !inside_model) {
-		//model_print("memcpy intercepted\n");
+		//model_print("memcpy size: %d\n", n);
 		thread_id_t tid = thread_current_id();
-		if (((uintptr_t)src&7) == 0 && ((uintptr_t)dst&7) == 0 && (n&7) == 0) {
-			for (uint i = 0; i < (n>>3); i++) {
-				raceCheckRead64(tid, (void *)(((uint64_t *)src) + i));
-				((volatile uint64_t *)dst)[i] = ((uint64_t *)src)[i];
-				raceCheckWrite64(tid, (void *)(((uint64_t *)dst) + i));
-			}
-		} else if (((uintptr_t)src&3) == 0 && ((uintptr_t)dst&3) == 0 && (n&3) == 0) {
-			for (uint i = 0; i < (n>>2); i++) {
-				raceCheckRead32(tid, (void *)(((uint32_t *)src) + i));
-				((volatile uint32_t *)dst)[i] = ((uint32_t *)src)[i];
-				raceCheckWrite32(tid, (void *)(((uint32_t *)dst) + i));
-			}
-		} else if (((uintptr_t)src&1) == 0 && ((uintptr_t)dst&1) == 0 && (n&1) == 0) {
-			for (uint i = 0; i < (n>>1); i++) {
-				raceCheckRead16(tid, (void *)(((uint16_t *)src) + i));
-				((volatile uint16_t *)dst)[i] = ((uint16_t *)src)[i];
-				raceCheckWrite16(tid, (void *)(((uint16_t *)dst) + i));
-			}
-		} else {
-			for(uint i=0;i<n;i++) {
-				raceCheckRead8(tid, (void *)(((char *)src) + i));
-				((volatile char *)dst)[i] = ((char *)src)[i];
-				raceCheckWrite8(tid, (void *)(((char *)dst) + i));
-			}
+		raceCheckReadMemop(tid, (void *)src, n);
+		raceCheckWriteMemop(tid, (void *)dst, n);
+	} else if (((uintptr_t)real_memcpy) < 2) {
+		for(uint i=0;i<n;i++) {
+			((volatile char *)dst)[i] = ((char *)src)[i];
 		}
-	} else {
-		if (((uintptr_t)real_memcpy) < 2) {
-			for(uint i=0;i<n;i++) {
-				((volatile char *)dst)[i] = ((char *)src)[i];
-			}
-			return dst;
-		}
-
-		return real_memcpy(dst, src, n);
+		return dst;
 	}
-	return dst;
+	return real_memcpy(dst, src, n);
 }
 
 void * memmove(void * dst, const void * src, size_t n) {
 	if (model && !inside_model) {
 		thread_id_t tid = thread_current_id();
-		if (((uintptr_t)src&7) == 0 && ((uintptr_t)dst&7) == 0 && (n&7) == 0) {
-			if (((uintptr_t)dst) < ((uintptr_t)src))
-				for (uint i = 0; i < (n>>3); i++) {
-					raceCheckRead64(tid, (void *)(((uint64_t *)src) + i));
-					((volatile uint64_t *)dst)[i] = ((uint64_t *)src)[i];
-					raceCheckWrite64(tid, (void *)(((uint64_t *)dst) + i));
-				}
-			else
-				for (uint i = (n>>3); i != 0;) {
-					i--;
-					raceCheckRead64(tid, (void *)(((uint64_t *)src) + i));
-					((volatile uint64_t *)dst)[i] = ((uint64_t *)src)[i];
-					raceCheckWrite64(tid, (void *)(((uint64_t *)dst) + i));
-				}
-		} else if (((uintptr_t)src&3) == 0 && ((uintptr_t)dst&3) == 0 && (n&3) == 0) {
-			if (((uintptr_t)dst) < ((uintptr_t)src))
-				for (uint i = 0; i < (n>>2); i++) {
-					raceCheckRead32(tid, (void *)(((uint32_t *)src) + i));
-					((volatile uint32_t *)dst)[i] = ((uint32_t *)src)[i];
-					raceCheckWrite32(tid, (void *)(((uint32_t *)dst) + i));
-				}
-			else
-				for (uint i = (n>>2); i != 0;) {
-					i--;
-					raceCheckRead32(tid, (void *)(((uint32_t *)src) + i));
-					((volatile uint32_t *)dst)[i] = ((uint32_t *)src)[i];
-					raceCheckWrite32(tid, (void *)(((uint32_t *)dst) + i));
-				}
-		} else if (((uintptr_t)src&1) == 0 && ((uintptr_t)dst&1) == 0 && (n&1) == 0) {
-			if (((uintptr_t)dst) < ((uintptr_t)src))
-				for (uint i = 0; i < (n>>1); i++) {
-					raceCheckRead16(tid, (void *)(((uint16_t *)src) + i));
-					((volatile uint16_t *)dst)[i] = ((uint16_t *)src)[i];
-					raceCheckWrite16(tid, (void *)(((uint16_t *)dst) + i));
-				}
-			else
-				for (uint i = (n>>1); i != 0;) {
-					i--;
-					raceCheckRead16(tid, (void *)(((uint16_t *)src) + i));
-					((volatile uint16_t *)dst)[i] = ((uint16_t *)src)[i];
-					raceCheckWrite16(tid, (void *)(((uint16_t *)dst) + i));
-				}
-		} else {
-			if (((uintptr_t)dst) < ((uintptr_t)src))
-				for(uint i = 0; i < n; i++) {
-					raceCheckRead8(tid, (void *)(((char *)src) + i));
-					((volatile char *)dst)[i] = ((char *)src)[i];
-					raceCheckWrite8(tid, (void *)(((char *)dst) + i));
-				}
-			else
-				for(uint i = n; i != 0;) {
-					i--;
-					raceCheckRead8(tid, (void *)(((char *)src) + i));
-					((volatile char *)dst)[i] = ((char *)src)[i];
-					raceCheckWrite8(tid, (void *)(((char *)dst) + i));
-				}
-		}
-	} else {
-		if (((uintptr_t)real_memmove) < 2) {
-			if (((uintptr_t)dst) < ((uintptr_t)src))
-				for(uint i=0;i<n;i++) {
-					((volatile char *)dst)[i] = ((char *)src)[i];
-				}
-			else
-				for(uint i=n;i!=0; ) {
-					i--;
-					((volatile char *)dst)[i] = ((char *)src)[i];
-				}
-			return dst;
-		}
-        return real_memmove(dst, src, n);
+		raceCheckReadMemop(tid, (void *)src, n);
+		raceCheckWriteMemop(tid, (void *)dst, n);
+	} else if (((uintptr_t)real_memmove) < 2) {
+		if (((uintptr_t)dst) < ((uintptr_t)src))
+			for(uint i=0;i<n;i++) {
+				((volatile char *)dst)[i] = ((char *)src)[i];
+			}
+		else
+			for(uint i=n;i!=0; ) {
+				i--;
+				((volatile char *)dst)[i] = ((char *)src)[i];
+			}
+		return dst;
 	}
-	return dst;
+	return real_memmove(dst, src, n);
 }
 
 void * memset(void *dst, int c, size_t n) {
 	if (model && !inside_model) {
+		//model_print("memset size: %d\n", n);
 		thread_id_t tid = thread_current_id();
-		uint8_t cs = c&0xff;
-		if (((uintptr_t)dst&7) == 0 && (n&7) == 0) {
-			for (uint i = 0; i < (n>>3); i++) {
-	            uint16_t cs2 = cs << 8 | cs;
-	            uint64_t cs3 = cs2 << 16 | cs2;
-	            uint64_t cs4 = cs3 << 32 | cs3;
-				((volatile uint64_t *)dst)[i] = cs4;
-				raceCheckWrite64(tid, (void *)(((uint64_t *)dst) + i));
-			}
-		} else if (((uintptr_t)dst&3) == 0 && (n&3) == 0) {
-			for (uint i = 0; i < (n>>2); i++) {
-	            uint16_t cs2 = cs << 8 | cs;
-	            uint32_t cs3 = cs2 << 16 | cs2;
-				((volatile uint32_t *)dst)[i] = cs3;
-				raceCheckWrite32(tid, (void *)(((uint32_t *)dst) + i));
-			}
-		} else if (((uintptr_t)dst&1) == 0 && (n&1) == 0) {
-			for (uint i = 0; i < (n>>1); i++) {
-	            uint16_t cs2 = cs << 8 | cs;
-				((volatile uint16_t *)dst)[i] = cs2;
-				raceCheckWrite16(tid, (void *)(((uint16_t *)dst) + i));
-			}
-		} else {
-			for (uint i=0;i<n;i++) {
-				((volatile char *)dst)[i] = cs;
-				raceCheckWrite8(tid, (void *)(((char *)dst) + i));
-			}
+		raceCheckWriteMemop(tid, (void *)dst, n);
+	} else if (((uintptr_t)real_memset) < 2) {
+		//stuck in dynamic linker alloc cycle...
+		for(size_t s=0;s<n;s++) {
+			((volatile char *)dst)[s] = (char) c;
 		}
-	} else {
-		if (((uintptr_t)real_memset) < 2) {
-			//stuck in dynamic linker alloc cycle...
-			for(size_t s=0;s<n;s++) {
-				((volatile char *)dst)[s] = (char) c;
-			}
-			return dst;
-		}
-		return real_memset(dst, c, n);
+		return dst;
 	}
-	return dst;
+	return real_memset(dst, c, n);
 }
 
 void bzero(void *dst, size_t n) {
 	if (model && !inside_model) {
 		thread_id_t tid = thread_current_id();
-		if (((uintptr_t)dst&7) == 0 && (n&7) == 0) {
-			for (uint i = 0; i < (n>>3); i++) {
-				((volatile uint64_t *)dst)[i] = 0;
-				raceCheckWrite64(tid, (void *)(((uint64_t *)dst) + i));
-			}
-		} else if (((uintptr_t)dst&3) == 0 && (n&3) == 0) {
-			for (uint i = 0; i < (n>>2); i++) {
-				((volatile uint32_t *)dst)[i] = 0;
-				raceCheckWrite32(tid, (void *)(((uint32_t *)dst) + i));
-			}
-		} else if (((uintptr_t)dst&1) == 0 && (n&1) == 0) {
-			for (uint i = 0; i < (n>>1); i++) {
-				((volatile uint16_t *)dst)[i] = 0;
-				raceCheckWrite16(tid, (void *)(((uint16_t *)dst) + i));
-			}
-		} else {
-			for (uint i=0;i<n;i++) {
-				((volatile char *)dst)[i] = 0;
-				raceCheckWrite8(tid, (void *)(((char *)dst) + i));
-			}
+		raceCheckWriteMemop(tid, (void *)dst, n);
+	} else if (((uintptr_t)real_bzero) < 2) {
+		for(size_t s=0;s<n;s++) {
+			((volatile char *)dst)[s] = 0;
 		}
-	} else {
-		if (((uintptr_t)real_bzero) < 2) {
-			for(size_t s=0;s<n;s++) {
-				((volatile char *)dst)[s] = 0;
-			}
-			return;
-		}
-		real_bzero(dst, n);
+		return;
 	}
+	real_bzero(dst, n);
 }

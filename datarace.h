@@ -43,10 +43,7 @@ struct DataRace {
 #define MASK16BIT 0xffff
 
 void initRaceDetector();
-void raceCheckWrite(thread_id_t thread, void *location);
 void atomraceCheckWrite(thread_id_t thread, void *location);
-void raceCheckRead(thread_id_t thread, const void *location);
-
 void atomraceCheckRead(thread_id_t thread, const void *location);
 void recordWrite(thread_id_t thread, void *location);
 void recordCalloc(void *location, size_t size);
@@ -64,6 +61,9 @@ void raceCheckWrite8(thread_id_t thread, const void *location);
 void raceCheckWrite16(thread_id_t thread, const void *location);
 void raceCheckWrite32(thread_id_t thread, const void *location);
 void raceCheckWrite64(thread_id_t thread, const void *location);
+
+void raceCheckWriteMemop(thread_id_t thread, const void *location, size_t size);
+void raceCheckReadMemop(thread_id_t thread, const void *location, size_t size);
 
 #ifdef COLLECT_STAT
 void print_normal_accesses();
