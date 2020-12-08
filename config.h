@@ -48,7 +48,7 @@
 #define SHADOWBASETABLES 4
 
 /** Enable debugging assertions (via ASSERT()) */
-#define CONFIG_ASSERT
+//#define CONFIG_ASSERT
 
 /** Enable mitigations against fork handlers that call into locks...  */
 #define FORK_HANDLER_HACK
@@ -65,5 +65,7 @@
 
 //#define COLLECT_STAT
 #define REPORT_DATA_RACES
+
+//#define PRINT_TRACE
 
 #endif

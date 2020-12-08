@@ -15,7 +15,6 @@
 #include "output.h"
 #include "traceanalysis.h"
 #include "execution.h"
-#include "history.h"
 #include "bugmessage.h"
 #include "params.h"
 #include "plugins.h"
@@ -72,7 +71,6 @@ ModelChecker::ModelChecker() :
 	/* Initialize default scheduler */
 	params(),
 	scheduler(new Scheduler()),
-	history(new ModelHistory()),
 	execution(new ModelExecution(this, scheduler)),
 	execution_number(1),
 	curr_thread_num(MAIN_THREAD_ID),
@@ -280,7 +278,9 @@ void ModelChecker::print_execution(bool printbugs) const
 	}
 
 	model_print("\n");
+#ifdef PRINT_TRACE
 	execution->print_summary();
+#endif
 }
 
 /**
@@ -313,7 +313,6 @@ void ModelChecker::finish_execution(bool more_executions)
 		clear_program_output();
 
 	execution_number ++;
-	history->set_new_exec_flag();
 
 	if (more_executions)
 		reset_to_initial_state();

@@ -41,7 +41,6 @@ public:
 	void exit_model_checker();
 
 	ModelExecution * get_execution() const { return execution; }
-	ModelHistory * get_history() const { return history; }
 
 	int get_execution_number() const { return execution_number; }
 
@@ -70,7 +69,6 @@ private:
 
 	/** The scheduler to use: tracks the running/ready Threads */
 	Scheduler * const scheduler;
-	ModelHistory * history;
 	ModelExecution *execution;
 	Thread * init_thread;
 
