@@ -12,6 +12,7 @@
  */
 int thrd_create(thrd_t *t, thrd_start_t start_routine, void *arg)
 {
+	createModelIfNotExist();
 	struct thread_params params = { start_routine, arg };
 	/* seq_cst is just a 'don't care' parameter */
 	model->switch_thread(new ModelAction(THREAD_CREATE, std::memory_order_seq_cst, t, (uint64_t)&params));
@@ -20,6 +21,7 @@ int thrd_create(thrd_t *t, thrd_start_t start_routine, void *arg)
 
 int thrd_join(thrd_t t)
 {
+	createModelIfNotExist();
 	Thread *th = t.priv;
 	model->switch_thread(new ModelAction(THREAD_JOIN, std::memory_order_seq_cst, th, id_to_int(thrd_to_id(t))));
 	return 0;
@@ -28,10 +30,12 @@ int thrd_join(thrd_t t)
 /** A no-op, for now */
 void thrd_yield(void)
 {
+	createModelIfNotExist();
 	model->switch_thread(new ModelAction(THREAD_YIELD, std::memory_order_seq_cst, thread_current(), VALUE_NONE));
 }
 
 thrd_t thrd_current(void)
 {
+	createModelIfNotExist();
 	return thread_current()->get_thrd_t();
 }

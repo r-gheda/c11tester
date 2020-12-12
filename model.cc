@@ -22,6 +22,14 @@
 ModelChecker *model = NULL;
 int inside_model = 0;
 
+uint64_t get_nanotime()
+{
+	struct timespec currtime;
+	clock_gettime(CLOCK_MONOTONIC, &currtime);
+
+	return currtime.tv_nsec;
+}
+
 void placeholder(void *) {
 	ASSERT(0);
 }
@@ -524,12 +532,16 @@ bool ModelChecker::handleChosenThread(Thread *old)
 void ModelChecker::startChecker() {
 	startExecution();
 	//Need to initial random number generator state to avoid resets on rollback
-	initstate(423121, random_state, sizeof(random_state));
+	//initstate(423121, random_state, sizeof(random_state));
+	uint64_t seed = get_nanotime();
+	srandom(seed);
 
 	snapshot = take_snapshot();
 
 	//reset random number generator state
-	setstate(random_state);
+	//setstate(random_state);
+	seed = get_nanotime();
+	srandom(seed);
 
 	install_trace_analyses(get_execution());
 	redirect_output();
