@@ -9,6 +9,8 @@
 #include "modeltypes.h"
 #include "classlist.h"
 
+#include <unordered_map>
+
 typedef enum enabled_type {
 	THREAD_DISABLED,
 	THREAD_ENABLED,
@@ -54,6 +56,8 @@ private:
 
 	/** The currently-running Thread */
 	Thread *current;
+	std::unordered_map<ModelAction*, float> prioity_map;
+
 };
 
 #endif	/* __SCHEDULE_H__ */

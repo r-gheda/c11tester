@@ -7,6 +7,7 @@
 #include "model.h"
 #include "execution.h"
 #include "fuzzer.h"
+#include "action.h"
 
 /**
  * Format an "enabled_type_t" for printing
@@ -40,8 +41,10 @@ Scheduler::Scheduler() :
 	enabled(NULL),
 	enabled_len(0),
 	curr_thread_index(0),
-	current(NULL)
+	current(NULL),
+	prioity_map{}
 {
+	prioity_map[nullptr] = -1;
 }
 
 /**
@@ -206,6 +209,11 @@ void Scheduler::wake(Thread *t)
  *
  *
  * @return The next Thread to run
+ *//**
+ * @brief Select a Thread to run via round-robin
+ *
+ *
+ * @return The next Thread to run
  */
 Thread * Scheduler::select_next_thread()
 {
@@ -231,8 +239,46 @@ Thread * Scheduler::select_next_thread()
 			return NULL;	// No threads available and no threads sleeping.
 		}
 	} else {
+		ModelAction* e_star = nullptr;
+		for(int i = 0; i < avail_threads; i++)
+		{
+			auto thread = thread_list[i];
+			auto curr_tid = int_to_id(thread);
+			auto cur_thread = model->get_thread(curr_tid);
+			auto event = cur_thread->get_pending();
+			if(prioity_map.find(event) == prioity_map.end())
+			{
+				auto new_prio = (float)random() / (float)RAND_MAX;
+				prioity_map[event] = new_prio;
+			}
+			if(prioity_map[e_star] < prioity_map[event])
+			{
+				e_star = event;
+			}
+		}
+		for(int i = 0; i < avail_threads; i++)
+		{
+			auto thread = thread_list[i];
+			auto curr_tid = int_to_id(thread);
+			auto cur_thread = model->get_thread(curr_tid);
+			auto event = cur_thread->get_pending();
+			if(event == e_star)
+				continue;
+			// check if event and e_star are same 
+			bool is_race_event_e_star = false;
+			
+			auto e_star_loc = e_star->get_location();
+			auto event_loc = event->get_location();
+
+			is_race_event_e_star = (e_star_loc == event_loc); 
+
+			if(!is_race_event_e_star)
+				continue;
+			prioity_map.erase(event);
+		}
+		thread = model->get_thread(e_star->get_tid());
 		// Some threads are available
-		thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
+		// thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
 	}
 
 	//curr_thread_index = id_to_int(thread->get_id());
