@@ -769,3 +769,10 @@ cdsc::mutex * ModelAction::get_mutex() const
 	else
 		return NULL;
 }
+
+bool ModelAction::in_count() const{
+	if(is_write() && is_seqcst()) return true; // write_seqcst 
+	else if(is_read()) return true; // all read
+	else if(is_fence() && is_acquire()) return true; //fence_rel(write), fence_acq fence_acq_rel fence_seqcst(read)
+	else return false;
+}

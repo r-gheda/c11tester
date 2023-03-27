@@ -197,6 +197,7 @@ public:
 
 	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
 	sllnode<ModelAction *> * getActionRef() { return action_ref; }
+	bool in_count() const;
 
 	SNAPSHOTALLOC
 private:

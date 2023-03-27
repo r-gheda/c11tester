@@ -5,6 +5,8 @@
 #include "action.h"
 
 int Fuzzer::selectWrite(ModelAction *read, SnapVector<ModelAction *> * rf_set) {
+	// int tmp =  random();
+	// model_print("randomly write index: %d \n", tmp);
 	int random_index = random() % rf_set->size();
 	return random_index;
 }
@@ -13,6 +15,13 @@ Thread * Fuzzer::selectThread(int * threadlist, int numthreads) {
 	int random_index = random() % numthreads;
 	int thread = threadlist[random_index];
 	thread_id_t curr_tid = int_to_id(thread);
+	return model->get_thread(curr_tid);
+}
+
+// select thread by the id picked by scheduler
+Thread * Fuzzer::selectThreadbyid(int threadid) {
+
+	thread_id_t curr_tid = int_to_id(threadid);
 	return model->get_thread(curr_tid);
 }
 

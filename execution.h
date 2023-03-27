@@ -209,6 +209,7 @@ private:
 	Thread * action_select_next_thread(const ModelAction *curr) const;
 
 	bool isfinished;
+	int instrnum;
 };
 
 #endif	/* __EXECUTION_H__ */

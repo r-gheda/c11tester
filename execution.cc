@@ -78,7 +78,8 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	priv(new struct model_snapshot_members ()),
 	mo_graph(new CycleGraph()),
 	fuzzer(new Fuzzer()),
-	isfinished(false)
+	isfinished(false),
+	instrnum(0)
 {
 	/* Initialize a model-checker thread, for special ModelActions */
 	model_thread = new Thread(get_next_id());
@@ -837,6 +838,10 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	DBG();
 
 	wake_up_sleeping_actions();
+	if(curr->in_count()){
+		instrnum++;
+		// model_print("current we have %d instrnums. \n", instrnum);
+	}
 
 	SnapVector<ModelAction *> * rf_set = NULL;
 	bool canprune = false;

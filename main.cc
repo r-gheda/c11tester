@@ -20,11 +20,16 @@
 void param_defaults(struct model_params *params)
 {
 	params->verbose = !!DBG_ENABLED();
-	params->maxexecutions = 10;
+	params->maxexecutions = 1;
 	params->traceminsize = 0;
 	params->checkthreshold = 500000;
 	params->removevisible = false;
 	params->nofork = false;
+	params->maxscheduler = 16;
+	params->bugdepth = 6;
+	params->version = 1;
+	params->maxread = 30;
+	params->seed = 0;
 }
 
 static void print_usage(struct model_params *params)
@@ -59,11 +64,25 @@ static void print_usage(struct model_params *params)
 		"                            Default: %u\n"
 		"-f, --freqfree=NUM          Frequency to free actions\n"
 		"                            Default: %u\n"
-		"-r, --removevisible         Free visible writes\n",
+		"-r, --removevisible         Free visible writes\n"
+		"-l, --maxscheduler			 Scheduler length prevention\n"
+		"                            Default: %u\n"
+		"-b, --bugdepth 			 Bugdepth\n"
+		"-v, --version				 0: using original c11tester; 1: using pct\n"
+		"                            Default: %u\n"
+		"-e, --bound of readnums	 the bound of readnums\n"
+		"                            Default: %u\n"
+		"-s, --seed					 random seed\n"
+		"                            Default: %u\n",
 		params->verbose,
 		params->maxexecutions,
 		params->traceminsize,
-		params->checkthreshold);
+		params->checkthreshold,
+		params->maxscheduler,
+		params->bugdepth,
+		params->version,
+		params->maxread,
+		params->seed);
 	model_print("Analysis plugins:\n");
 	for(unsigned int i=0;i<registeredanalysis->size();i++) {
 		TraceAnalysis * analysis=(*registeredanalysis)[i];
@@ -88,7 +107,8 @@ bool install_plugin(char * name) {
 }
 
 void parse_options(struct model_params *params) {
-	const char *shortopts = "hrnt:o:x:v:m:f:";
+	//const char *shortopts = "hrnt:o:x:v:m:f:";
+	const char *shortopts = "hrnt:o:x:v:m:f:l:b:p:e:s:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"removevisible", no_argument, NULL, 'r'},
@@ -98,6 +118,11 @@ void parse_options(struct model_params *params) {
 		{"verbose", optional_argument, NULL, 'v'},
 		{"minsize", required_argument, NULL, 'm'},
 		{"freqfree", required_argument, NULL, 'f'},
+		{"maxscheduler", required_argument, NULL, 'l'},
+		{"bugdepth", required_argument, NULL, 'b'},
+		{"version", required_argument, NULL, 'p'},
+		{"readnum", required_argument, NULL, 'e'},
+		{"seed", required_argument, NULL, 's'},
 		{0, 0, 0, 0}	/* Terminator */
 	};
 	int opt, longindex;
@@ -150,8 +175,23 @@ void parse_options(struct model_params *params) {
 		case 'f':
 			params->checkthreshold = atoi(optarg);
 			break;
+		case 'l':
+			params->maxscheduler = atoi(optarg);
+			break;
+		case 'b':
+			params->bugdepth = atoi(optarg);
+			break;
+		case 'p':
+			params->version = atoi(optarg);
+			break;
+		case 'e':
+			params->maxread = atoi(optarg);
+			break;
 		case 'r':
 			params->removevisible = true;
+			break;
+		case 's':
+			params->seed = atoi(optarg);
 			break;
 		case 'o':
 		{

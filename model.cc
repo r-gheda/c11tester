@@ -64,6 +64,29 @@ void install_handler() {
 	}
 }
 
+void print_params(struct model_params *params){
+		model_print(
+		"Print current params: \n"
+		"-v[NUM], --verbose[=NUM]   Default: 0 Now: %d\n"
+		"-x, --maxexec=NUM           Maximum number of executions. Default: 10 Now: %u\n"
+		"-m, --minsize=NUM           Minimum number of actions to keep Default: 0 Now: %u\n"
+		"-f, --freqfree=NUM          Frequency to free actions Default:500000 Now: %u\n"
+		"-l, --maxscheduler=NUM		 Scheduler length limitation Default:50 Now: %u\n"
+		"-b, --bugdepth=NUM			 bugdepth Default:5 Now: %u\n"
+		"-v, --version=NUM			 c11testerversion Default:0 Now: %u\n"
+		"-e, --maxread=NUM			 read num bounds: Default:30 Now: %u\n"
+		"-s, --seed=NUM			 	 random seed: Default:0 Now: %u\n",
+		params->verbose,
+		params->maxexecutions,
+		params->traceminsize,
+		params->checkthreshold,
+		params->maxscheduler,
+		params->bugdepth,
+		params->version,
+		params->maxread,
+		params->seed);
+}
+
 void createModelIfNotExist() {
 	if (!model) {
 		ENTER_MODEL_FLAG;
@@ -98,9 +121,14 @@ ModelChecker::ModelChecker() :
 	execution->add_thread(init_thread);
 	scheduler->set_current_thread(init_thread);
 	register_plugins();
-	execution->setParams(&params);
+	
 	param_defaults(&params);
 	parse_options(&params);
+	print_params(&params);
+	
+	execution->setParams(&params);
+	scheduler->setParams(&params);
+	scheduler->print_chg();
 	initRaceDetector();
 	/* Configure output redirection for the model-checker */
 	install_handler();
@@ -315,8 +343,10 @@ void ModelChecker::finish_execution(bool more_executions)
 
 	record_stats();
 	/* Output */
-	if ( (complete && params.verbose) || params.verbose>1 || (complete && execution->have_bug_reports()))
+	if ( (complete && params.verbose) || params.verbose>1 || (complete && execution->have_bug_reports())){
+		model_print("scheduler length is %d. \n", scheduler->getSchelen());
 		print_execution(complete);
+	}
 	else
 		clear_program_output();
 
