@@ -42,9 +42,9 @@ Scheduler::Scheduler() :
 	enabled_len(0),
 	curr_thread_index(0),
 	current(NULL),
-	prioity_map{}
+	priority_map{}
 {
-	prioity_map[nullptr] = -1;
+	priority_map[nullptr] = -1;
 }
 
 /**
@@ -246,12 +246,12 @@ Thread * Scheduler::select_next_thread()
 			auto curr_tid = int_to_id(thread);
 			auto cur_thread = model->get_thread(curr_tid);
 			auto event = cur_thread->get_pending();
-			if(prioity_map.find(event) == prioity_map.end())
+			if(priority_map.find(event) == priority_map.end())
 			{
 				auto new_prio = (float)random() / (float)RAND_MAX;
-				prioity_map[event] = new_prio;
+				priority_map[event] = new_prio;
 			}
-			if(prioity_map[e_star] < prioity_map[event])
+			if(priority_map[e_star] < priority_map[event])
 			{
 				e_star = event;
 			}
@@ -274,7 +274,7 @@ Thread * Scheduler::select_next_thread()
 
 			if(!is_race_event_e_star)
 				continue;
-			prioity_map.erase(event);
+			priority_map.erase(event);
 		}
 		thread = model->get_thread(e_star->get_tid());
 		// Some threads are available
