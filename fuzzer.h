@@ -9,6 +9,7 @@ class Fuzzer {
 public:
 	Fuzzer() {}
 	virtual int selectWrite(ModelAction *read, SnapVector<ModelAction *>* rf_set);
+	virtual int find_idx(SnapVector<ModelAction *> * rf_set, ModelAction* local_wr);
 	virtual bool has_paused_threads() { return false; }
 	virtual Thread * selectThread(int * threadlist, int numthreads);
 	virtual Thread *selectThreadbyid(int threadid);

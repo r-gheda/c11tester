@@ -492,6 +492,14 @@ public:
 		return false;
 	}
 
+	// get the index of the find item
+	uint get_index(type item){
+		for(uint i = 0; i < _size; i++){
+			if(array[i] == item) return i;
+		}
+		return -1;
+	}
+
 
 	// add resize with item
 	void resize(uint psize,type item) {
@@ -557,6 +565,10 @@ public:
 		array[index] = item;
 	}
 
+	
+
+
+
 	void insertAt(uint index, type item) {
 		resize(_size + 1);
 		for (uint i = _size - 1;i > index;i--) {
@@ -592,6 +604,8 @@ public:
 	void clear() {
 		_size = 0;
 	}
+
+	
 
 	SNAPSHOTALLOC;
 private:

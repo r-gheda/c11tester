@@ -25,10 +25,11 @@ void param_defaults(struct model_params *params)
 	params->checkthreshold = 500000;
 	params->removevisible = false;
 	params->nofork = false;
-	params->maxscheduler = 16;
-	params->bugdepth = 6;
+	// params->maxscheduler = 16;
+	params->bugdepth = 7;
 	params->version = 1;
-	params->maxread = 30;
+	params->maxinstr = 19;
+	params->history = 2;
 	params->seed = 0;
 }
 
@@ -65,23 +66,27 @@ static void print_usage(struct model_params *params)
 		"-f, --freqfree=NUM          Frequency to free actions\n"
 		"                            Default: %u\n"
 		"-r, --removevisible         Free visible writes\n"
-		"-l, --maxscheduler			 Scheduler length prevention\n"
+		// "-l, --maxscheduler			 Scheduler length prevention\n"
+		// "                            Default: %u\n"
+		"-d, --bugdepth 			 Bugdepth\n"
 		"                            Default: %u\n"
-		"-b, --bugdepth 			 Bugdepth\n"
-		"-v, --version				 0: using original c11tester; 1: using pct\n"
+		"-p, --version				 0: using original c11tester; 1: using pct\n"
 		"                            Default: %u\n"
-		"-e, --bound of readnums	 the bound of readnums\n"
+		"-k, --bound of instrnums	 the bound of instrnums\n"
 		"                            Default: %u\n"
-		"-s, --seed					 random seed\n"
+		"-y, --search rf_set	 	 the bound of searching in rf_set\n"
+		"                            Default: %u\n"
+		"-s, --seed				 	 the random seed\n"
 		"                            Default: %u\n",
 		params->verbose,
 		params->maxexecutions,
 		params->traceminsize,
 		params->checkthreshold,
-		params->maxscheduler,
+		// params->maxscheduler,
 		params->bugdepth,
 		params->version,
-		params->maxread,
+		params->maxinstr,
+		params->history,
 		params->seed);
 	model_print("Analysis plugins:\n");
 	for(unsigned int i=0;i<registeredanalysis->size();i++) {
@@ -108,7 +113,8 @@ bool install_plugin(char * name) {
 
 void parse_options(struct model_params *params) {
 	//const char *shortopts = "hrnt:o:x:v:m:f:";
-	const char *shortopts = "hrnt:o:x:v:m:f:l:b:p:e:s:";
+	// const char *shortopts = "hrnt:o:x:v:m:f:l:b:p:i:y:";
+	const char *shortopts = "hrnt:o:x:v:m:f:d:p:k:y:s:";
 	const struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"removevisible", no_argument, NULL, 'r'},
@@ -118,10 +124,11 @@ void parse_options(struct model_params *params) {
 		{"verbose", optional_argument, NULL, 'v'},
 		{"minsize", required_argument, NULL, 'm'},
 		{"freqfree", required_argument, NULL, 'f'},
-		{"maxscheduler", required_argument, NULL, 'l'},
-		{"bugdepth", required_argument, NULL, 'b'},
+		// {"maxscheduler", required_argument, NULL, 'l'},
+		{"bugdepth", required_argument, NULL, 'd'},
 		{"version", required_argument, NULL, 'p'},
-		{"readnum", required_argument, NULL, 'e'},
+		{"instrnum", required_argument, NULL, 'k'},
+		{"history", required_argument, NULL, 'y'},
 		{"seed", required_argument, NULL, 's'},
 		{0, 0, 0, 0}	/* Terminator */
 	};
@@ -175,17 +182,21 @@ void parse_options(struct model_params *params) {
 		case 'f':
 			params->checkthreshold = atoi(optarg);
 			break;
-		case 'l':
-			params->maxscheduler = atoi(optarg);
-			break;
-		case 'b':
+		// case 'l':
+		// 	params->maxscheduler = atoi(optarg);
+		// 	break;
+		case 'd':
 			params->bugdepth = atoi(optarg);
 			break;
 		case 'p':
 			params->version = atoi(optarg);
 			break;
-		case 'e':
-			params->maxread = atoi(optarg);
+		// pctwm: the max instruction num
+		case 'k':
+			params->maxinstr = atoi(optarg);
+			break;
+		case 'y':
+			params->history = atoi(optarg);
 			break;
 		case 'r':
 			params->removevisible = true;

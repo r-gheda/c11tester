@@ -5,10 +5,20 @@
 #include "action.h"
 
 int Fuzzer::selectWrite(ModelAction *read, SnapVector<ModelAction *> * rf_set) {
-	// int tmp =  random();
-	// model_print("randomly write index: %d \n", tmp);
 	int random_index = random() % rf_set->size();
 	return random_index;
+}
+
+int Fuzzer::find_idx(SnapVector<ModelAction *> * rf_set, ModelAction* chosen_wr){
+	int index = -1;
+	for(uint i = 0; i < rf_set->size(); i++){
+		ModelAction* curr = (*rf_set)[i];
+		if(curr == chosen_wr){
+			index = i;
+			break;
+		}
+	}
+	return index;
 }
 
 Thread * Fuzzer::selectThread(int * threadlist, int numthreads) {

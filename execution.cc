@@ -79,7 +79,9 @@ ModelExecution::ModelExecution(ModelChecker *m, Scheduler *scheduler) :
 	mo_graph(new CycleGraph()),
 	fuzzer(new Fuzzer()),
 	isfinished(false),
-	instrnum(0)
+	instrnum(0),
+	maxinstr(0),
+	history_(0)
 {
 	/* Initialize a model-checker thread, for special ModelActions */
 	model_thread = new Thread(get_next_id());
@@ -125,6 +127,16 @@ static simple_action_list_t * get_safe_ptr_action(HashTable<const void *, simple
 	}
 	return tmp;
 }
+
+// static simple_action_list_t * get_safe_ptr_action_thread(HashTable<const void *, simple_action_list_t *, uintptr_t, 2> * hash, void * ptr)
+// {
+// 	simple_action_list_t *tmp = hash->get(ptr);
+// 	if (tmp == NULL) {
+// 		tmp = new simple_action_list_t();
+// 		hash->put(ptr, tmp);
+// 	}
+// 	return tmp;
+// }
 
 static SnapVector<simple_action_list_t> * get_safe_ptr_vect_action(HashTable<const void *, SnapVector<simple_action_list_t> *, uintptr_t, 2> * hash, void * ptr)
 {
@@ -382,11 +394,478 @@ ModelAction * ModelExecution::convertNonAtomicStore(void * location) {
 	return act;
 }
 
+
+void ModelExecution::print_actset(SnapVector<ModelAction *> * act_set){
+	int len = act_set->size();
+	model_print("print act_set : current action set size: %d. - ", len);
+	for(int i = 0; i < len; i++){
+		ModelAction * act = (*act_set)[i];
+		model_print("[action on thread %d, location: %14p, seq_nums: %u ]", 
+		id_to_int(act->get_tid()), act->get_location(), act->get_seq_number());
+	}
+	model_print("\n");
+
+}
+
+// // weak memory - func1: 
+/**
+ * Update a vector by the new action. Return a variable vector
+ * @param input_vec The old variable vector
+ * @param curr The new action
+ * @return Desired new variable vector
+ */
+SnapVector<ModelAction*> * ModelExecution::updateVec(SnapVector<ModelAction*> *input_vec, ModelAction* curr){
+	int len = input_vec->size();
+	for(int i = 0; i < len; i++){
+		ModelAction* iteract = (*input_vec)[i];
+		if(curr->get_location() == iteract->get_location()){
+			if(iteract->get_seq_number() > curr->get_seq_number()){ // update only when the new action(curr) has larger sequence number
+				(*input_vec)[i] = iteract;
+			}
+			return input_vec;
+		}
+	}
+	
+	
+	input_vec->push_back(curr);
+	
+
+	return input_vec;
+}
+
+// // weak memory - func2: 
+// /**
+//  * a vector saves the newest variable 
+//  * @param Eacc The accumulate vector
+//  * @param local_vec The local vector on the thread
+//  * @return Desired vector with newest variable
+//  */
+SnapVector<ModelAction*> * ModelExecution::maxVec(SnapVector<ModelAction*> * Eacc, SnapVector<ModelAction*> *local_vec){
+	uint Eacc_len = Eacc->size();
+	uint local_vec_len = local_vec->size();
+	SnapVector<ModelAction* > * res = new SnapVector<ModelAction *> ();
+	
+	for(uint i = 0; i < Eacc_len; i++){
+		ModelAction* act1 = (*Eacc)[i]; // the variable in accumulate vector
+		res = updateVec(res, act1);
+		// uint localvec_idx = local_vec->get_index(act1);
+		// static const uint NoVariable = -1;
+		// if(localvec_idx != NoVariable){// have this variable
+		// 	ModelAction* act2 = (*local_vec)[localvec_idx]; // the same variable
+		// 	if(act1->get_seq_number() > act2->get_seq_number()){
+		// 		(*local_vec)[localvec_idx] = act1;
+		// 	}
+		// }
+		// else{
+		// 	local_vec->push_back(act1);
+		// }
+		
+	}
+
+	for(uint i = 0; i < local_vec_len; i++){
+		ModelAction* act2 = (*local_vec)[i];
+		res = updateVec(res, act2);
+	}
+
+	return res;
+}
+
+
+// for (it = action_trace.end();it != NULL;it = it->getPrev()) {
+// 		if (counter > length)
+// 			break;
+
+// 		ModelAction * act = it->getVal();
+// 		list.push_front(act);
+// 		counter++;
+// 	}
+// // weak memory implementation test - func3
+// /**
+//  * Iterate all actions on the current thread to build the bag for this action
+//  * @param rd the read action
+//  * @param curr the action to iterate(the selected write)
+//  * @return Desired new variable vector
+//  */
+SnapVector<ModelAction *> *  ModelExecution::computeUpdate(ModelAction *rd, ModelAction * curr)
+{	
+	ASSERT(rd->is_read()); // the inital read action
+	ASSERT(curr->is_write()); // the randomly selected write action
+	
+	SnapVector<ModelAction *> * Eres = new SnapVector<ModelAction *>(); // the result E
+	SnapVector<ModelAction *> * Eacc = new SnapVector<ModelAction *>(); // the accumulate bag 
+	
+	SnapVector<action_list_t> *thrd_lists = obj_thrd_map.get(curr->get_location()); // get all actions on one thread
+
+	// the thread of read action - get local vector
+	int rd_tid = rd->get_tid();
+	Thread *rd_thr = get_thread(rd_tid);
+	SnapVector<ModelAction *> * rd_localvec = rd_thr->get_local_vec();
+	//model_print("computeUpdate for action %u on thread %d : the localvec on read action's thread, size: %d.\n ", rd->get_seq_number(), rd_tid, rd_localvec->size());
+	//print_actset(rd_localvec);
+
+	// the thread of write action - iteration
+	// int wr_tid = curr->get_tid(); // get the current thread id
+	// action_list_t *wr_list = &(*thrd_lists)[wr_tid]; // get the thread of write action
+	// sllnode<ModelAction *> * rit;
+	bool before_flag = false;
+	updateVec(Eacc, curr);
+	//model_print("first put the write action in Eacc. \n");
+	//print_actset(Eacc);
+	
+	//model_print("Start updating the bag for read action %d. \n", rd->get_seq_number());
+	sllnode<ModelAction*> *it;
+	for (it = action_trace.end();it != NULL;it = it->getPrev()) { // get all actions before current action
+		ModelAction *act = it->getVal();
+		
+		const char *type_str = act->get_type_str();
+		const char *mo_str = act->get_mo_str();
+		
+		if(act == curr){
+			before_flag = true;
+			//model_print("action before the write:");
+		}
+
+		
+
+		if(before_flag && act != curr && act->get_tid() == curr->get_tid()){// iterate all actions before the current action
+			//model_print("\n computeUpdate: iteration action type is  %-14s. on thread %d, sequence number is : %d , location: %14p, mo_type is : %7s. \n", 
+					//type_str, id_to_int(act->get_tid()), act->get_seq_number(),act->get_location(),  mo_str);
+			// model_print("(Iteration action seq_num: %u. type: %-14s, location: %14p. threadid: %d", 
+			// 		act->get_seq_number(), act->get_type_str(), act->get_location(), act->get_tid());
+			//model_print("value: %" PRIx64 ")\n", act->get_value());
+			if(act->is_thread_start()){//stop condition 1: reach the start of a thread
+				//model_print("meet the thread start. \n");
+				Eres = Eacc;
+				break;
+			}
+			// else if(!act->is_write() && (act->is_read() && !act->checkbag())){
+			// 	continue;
+			// }
+			else if(act->checkbag()){// stop condtion2: reach an action with bag ( read, sc, fence)
+				Eacc = maxVec(Eacc, act->get_bag());
+				Eres = maxVec(Eacc, rd_localvec); // merge the accumulate vector with local vector
+				//model_print("meet one action with bag. break. ");
+				break;
+			}
+			else if(act->is_write() && act->is_release()){ //is_release includes: release,acq_rel, seq_cst
+				//model_print("meet a write which is release. ");
+				Eacc = updateVec(Eacc, act);
+				Eres = Eacc;
+			}
+			// else if(act->is_fence() && act->is_acquire() && act->checkbag()){
+			// 	model_print("meet a fence_acquire with bag. ");
+			// 	Eacc = maxVec(Eacc, act->get_bag());
+			// 	Eres = Eacc;
+			// 	break; // stop condition 3: meet a fence_acquire with bag
+			// }
+			// else if(act->is_seqcst() &&(act->is_read() || act->is_write())){
+			// 	model_print("meet a sc write/read with bag. ");
+			// 	Eacc = maxVec(Eacc, act->get_bag());
+			// 	Eres = Eacc;
+			// 	break; // stop condition 4: meet a fence_acquire with bag
+			// }
+
+
+
+		}
+
+	}
+	//model_print("\n");
+	//model_print("End computeUpdate: iteration bag result: Eres size is %d \n", Eres->size());
+	//print_actset(Eres);
+
+	rd_localvec = maxVec(Eres, rd_localvec);
+	Eres = rd_localvec;
+
+	rd_thr->set_local_vec(rd_localvec);
+	//model_print("After process read, the thread local vec becomes \t");
+	//rd_thr->print_local_vec();
+	
+	rd->set_bag(Eres);
+	//model_print("After process read, the action set a bag. \t");
+	//rd->print_bag();
+
+	//model_print("\n \n");
+	
+	return Eres;
+}
+
+
+
+
+
+SnapVector<ModelAction *> *  ModelExecution::computeUpdate_fence(ModelAction *fence_acq, ModelAction * fence_rel)
+{	
+	ASSERT(fence_acq->is_acquire()); // the inital read action
+	ASSERT(fence_rel->is_release()); // the randomly selected write action
+	
+	SnapVector<ModelAction *> * Eres = new SnapVector<ModelAction *>(); // the result E
+	SnapVector<ModelAction *> * Eacc = new SnapVector<ModelAction *>(); // the accumulate bag 
+	
+
+	// the thread of read action - get local vector
+	int acq_tid = fence_acq->get_tid();
+	Thread *acq_thr = get_thread(acq_tid);
+	SnapVector<ModelAction *> * acq_localvec = acq_thr->get_local_vec();
+	//model_print("computeUpdate for fence %u on thread %d : the localvec on read action's thread, size: %d.\n ", 
+			//fence_acq->get_seq_number(), acq_tid, acq_localvec->size());
+	//print_actset(acq_localvec);
+
+	// the thread of write action - iteration
+	// int wr_tid = curr->get_tid(); // get the current thread id
+	// action_list_t *wr_list = &(*thrd_lists)[wr_tid]; // get the thread of write action
+	// sllnode<ModelAction *> * rit;
+	bool before_flag = false;
+	
+	
+	//model_print("Start updating the bag for fence_acq action %d. \n", fence_acq->get_seq_number());
+	sllnode<ModelAction*> *it;
+	for (it = action_trace.end();it != NULL;it = it->getPrev()) { // get all actions before current action
+		ModelAction *act = it->getVal();
+		
+		const char *type_str = act->get_type_str();
+		const char *mo_str = act->get_mo_str();
+		
+		if(act == fence_rel){
+			before_flag = true;
+			//model_print("action before the fence_release:");
+		}
+
+		
+
+		if(before_flag && act != fence_rel && act->get_tid() == fence_rel->get_tid()){// iterate all actions before the current action
+			//model_print("\n computeUpdate: iteration action type is  %-14s. on thread %d, sequence number is : %d , location: %14p, mo_type is : %7s. \n", 
+					//type_str, id_to_int(act->get_tid()), act->get_seq_number(),act->get_location(),  mo_str);
+			// model_print("(Iteration action seq_num: %u. type: %-14s, location: %14p. threadid: %d", 
+			// 		act->get_seq_number(), act->get_type_str(), act->get_location(), act->get_tid());
+			//model_print("value: %" PRIx64 ")\n", act->get_value());
+			if(act->is_thread_start()){//stop condition 1: reach the start of a thread
+				//model_print("meet the thread start. \n");
+				Eres = Eacc;
+				break;
+			}
+			// else if(!act->is_write() && (act->is_read() && !act->checkbag())){
+			// 	continue;
+			// }
+			else if(act->checkbag()){// stop condtion2: reach an action with bag(read or sc)
+				Eacc = maxVec(Eacc, act->get_bag());
+				Eres = maxVec(Eacc, acq_localvec); // merge the accumulate vector with local vector
+				//model_print("meet one read with bag. break. ");
+				break;
+			}
+			else if(act->is_write() && act->is_release()){ // is_release include: release, acq_rel, seq_cst
+				//model_print("meet a write which is release. ");
+				Eacc = updateVec(Eacc, act);
+				Eres = Eacc;
+			}
+			// else if(act->is_seqcst() && (act->is_read() || act->is_write())){// stop condtion3: reach an sc_action with bag
+			// 	Eacc = maxVec(Eacc, act->get_bag());
+			// 	Eres = maxVec(Eacc, acq_localvec); // merge the accumulate vector with local vector
+			// 	model_print("meet one read with bag. break. ");
+			// 	break;
+			// }
+
+
+		}
+
+	}
+	//model_print("\n");
+	//model_print("End computeUpdate: iteration bag result: Eres size is %d \n", Eres->size());
+	//print_actset(Eres);
+
+	acq_localvec = maxVec(Eres, acq_localvec);
+	Eres = acq_localvec;
+
+	// acq_thr->set_local_vec(acq_localvec);
+	// model_print("After process fence, the thread local vec becomes \t");
+	// acq_thr->print_local_vec();
+	
+	// fence_acq->set_bag(Eres);
+	// model_print("After process fence, the action set a bag. \t");
+	// fence_acq->print_bag();
+
+	// model_print("\n \n");
+	
+	return Eres;
+}
+// /**
+//  * Processes a read model action.
+//  * @param curr is the read model action to process.
+//  * @param rf_set is the set of model actions we can possibly read from
+//  * @return True if the read can be pruned from the thread map list.
+//  * weak memory version
+//  */
+bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set, bool read_external)
+{
+	SnapVector<ModelAction *> * priorset = new SnapVector<ModelAction *>();
+	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
+	if (hasnonatomicstore) {
+		ModelAction * nonatomicstore = convertNonAtomicStore(curr->get_location());
+		rf_set->push_back(nonatomicstore);
+	}
+
+	SnapVector<ModelAction*> * tmpbag = new SnapVector<ModelAction *> ();
+
+	if(curr->is_seqcst()){
+		//model_print("for seqcst read: first find the last sc and put the bag. \n");
+		tmpbag = computeBag_sc(curr);
+	}
+
+	// Remove writes that violate read modification order
+	/*
+	   uint i = 0;
+	   while (i < rf_set->size()) {
+	        ModelAction * rf = (*rf_set)[i];
+	        if (!r_modification_order(curr, rf, NULL, NULL, true)) {
+	                (*rf_set)[i] = rf_set->back();
+	                rf_set->pop_back();
+	        } else
+	                i++;
+	   }*/
+
+	// while(true) {
+
+	// 	int index = fuzzer->selectWrite(curr, rf_set);
+
+	// 	ModelAction *rf = (*rf_set)[index];
+
+	// 	ASSERT(rf);
+	// 	bool canprune = false;
+	// 	if (r_modification_order(curr, rf, priorset, &canprune)) {
+	// 		for(unsigned int i=0;i<priorset->size();i++) {
+	// 			mo_graph->addEdge((*priorset)[i], rf);
+	// 		}
+	// 		read_from(curr, rf);
+	// 		get_thread(curr)->set_return_value(rf->get_write_value());
+	// 		delete priorset;
+	// 		//Update acquire fence clock vector
+	// 		ClockVector * hbcv = get_hb_from_write(rf);
+	// 		if (hbcv != NULL)
+	// 			get_thread(curr)->get_acq_fence_cv()->merge(hbcv);
+	// 		return canprune && (curr->get_type() == ATOMIC_READ);
+	// 	}
+	// 	priorset->clear();
+	// 	(*rf_set)[index] = rf_set->back();
+	// 	rf_set->pop_back();
+	// }
+
+	
+
+	// weak memory
+	while(true) {
+		// step 1 : prepare
+		ModelAction *rf;
+		int index;
+		//model_print("current read action location: %u, threadid : %u \n", 
+						//curr->get_location(),id_to_int(curr->get_tid()));
+
+		// step2: get the read action related info
+		int rd_tid = curr->get_tid();
+		Thread *rd_thr = get_thread(rd_tid);
+		//model_print("In process read: current localvec size is %d.\n", rd_thr->get_localvec_size());
+		//rd_thr->print_local_vec();
+
+		// step3: read externally or internally
+		if(read_external){ // ask to read externally
+			//model_print("Process read: read externally. \n");
+			index = fuzzer->selectWrite(curr, rf_set);
+			rf = (*rf_set)[index]; // a randomly selected write
+			rd_thr->update_local_vec(rf);
+
+			SnapVector<ModelAction *> * tmp_bag = new SnapVector<ModelAction *> ();
+			updateVec(tmp_bag, rf);
+			curr->set_bag(tmp_bag); // set the bag of this read with bag
+			rd_thr->update_local_vec(rf);// update the localvec on this thread based on the write
+			if(curr->could_synchronize_with(rf)){
+				//model_print("could synchronize with the write. start looping. \n");
+				computeUpdate(curr, rf); // it will not change the selection of write - but update local vec
+			}
+
+
+			if(curr->is_seqcst()){ // if is read_sc one more step
+				//model_print("for the read_sc, one more step. \n");
+				curr->set_bag(maxVec(curr->get_bag(), tmpbag));
+				rd_thr->set_local_vec(maxVec(rd_thr->get_local_vec(), curr->get_bag()));
+			}
+			
+			
+			//the same as original c11tester: delete this rf_set
+			// (*rf_set)[index] = rf_set->back();
+			// rf_set->pop_back();
+
+		}
+		else{ // ask to use the local vec variable
+			// for read local: first update the localvec and bag with last sc
+			if(curr->is_seqcst()){ // if is read_sc one more step
+				//model_print("for the read_sc, one more step. \n");
+				curr->set_bag(tmpbag);
+				rd_thr->set_local_vec(maxVec(rd_thr->get_local_vec(), curr->get_bag()));
+			}
+
+			// then process the read
+			rf = rd_thr->get_same_location_act(curr); // the local vec doesnot have the variable(location)
+			//model_print("Process read: read locally. \n");
+			if(rf){ // the local vec has such variable
+				//model_print("local vec has such write, seqnum:%d \n", rf->get_seq_number());
+				index = fuzzer->find_idx(rf_set, rf);
+				if(index != -1){ // to make sure this variable locally is readable
+					//model_print("localvec has such variable \n");
+					rf = (*rf_set)[index];
+					// (*rf_set)[index] = rf_set->back();
+					// rf_set->pop_back();
+				 	// localvec has the same variable
+				}
+				else{
+					//model_print("localvec has one variable. but not in the rf_set \n");
+					//model_print("rf_set size is: %u. \n", rf_set->size());
+					index = fuzzer->selectWrite(curr, rf_set);
+					rf = (*rf_set)[index];
+					// (*rf_set)[index] = rf_set->back();
+					// rf_set->pop_back();
+				}
+			}
+			else{// the local vec has no such variable
+				//model_print("localvec has no variable. randomly select from rf_set. \n");
+				//model_print("rf_set size is: %u. \n", rf_set->size());
+				index = fuzzer->selectWrite(curr, rf_set);
+				rf = (*rf_set)[index];
+				// (*rf_set)[index] = rf_set->back();
+				// rf_set->pop_back();
+			}
+			
+			
+
+			
+		}
+
+		ASSERT(rf);
+		bool canprune = false;
+		if (r_modification_order(curr, rf, priorset, &canprune)) {
+			for(unsigned int i=0;i<priorset->size();i++) {
+				mo_graph->addEdge((*priorset)[i], rf);
+			}
+			read_from(curr, rf);
+			get_thread(curr)->set_return_value(rf->get_write_value());
+			delete priorset;
+			//Update acquire fence clock vector
+			ClockVector * hbcv = get_hb_from_write(rf);
+			if (hbcv != NULL)
+				get_thread(curr)->get_acq_fence_cv()->merge(hbcv);
+			return canprune && (curr->get_type() == ATOMIC_READ);
+		}
+		priorset->clear();
+		(*rf_set)[index] = rf_set->back();
+		rf_set->pop_back();
+	}			
+}
+
+
 /**
  * Processes a read model action.
  * @param curr is the read model action to process.
  * @param rf_set is the set of model actions we can possibly read from
  * @return True if the read can be pruned from the thread map list.
+ * c11tester version
  */
 bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set)
 {
@@ -410,6 +889,7 @@ bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
 	   }*/
 
 	while(true) {
+
 		int index = fuzzer->selectWrite(curr, rf_set);
 
 		ModelAction *rf = (*rf_set)[index];
@@ -432,8 +912,10 @@ bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> *
 		priorset->clear();
 		(*rf_set)[index] = rf_set->back();
 		rf_set->pop_back();
-	}
+	
+	}			
 }
+
 
 /**
  * Processes a lock, trylock, or unlock model action.  @param curr is
@@ -583,6 +1065,20 @@ bool ModelExecution::process_mutex(ModelAction *curr)
  */
 void ModelExecution::process_write(ModelAction *curr)
 {
+	//model_print("\n Process write action. ");
+	if(curr->is_seqcst()){
+		SnapVector<ModelAction*> * tmp_bag = updateVec(curr->get_bag(), curr);
+		curr->set_bag(tmp_bag);
+		//model_print("set a bag for write_sc. \n");
+	}
+	// we meet a write action -> update the local vec
+	Thread * curr_thread = get_thread(curr);
+	SnapVector<ModelAction*> *thrd_localvec = curr_thread->get_local_vec();
+	curr_thread->set_local_vec(updateVec(thrd_localvec, curr));
+	curr_thread->update_local_vec(curr);
+	//model_print("Write action: Updates local vec in thread %d - ", id_to_int(curr_thread->get_id()));
+	
+	//curr_thread->print_local_vec();
 	w_modification_order(curr);
 	get_thread(curr)->set_return_value(VALUE_NONE);
 }
@@ -602,8 +1098,43 @@ void ModelExecution::process_fence(ModelAction *curr)
 	 *   sequences
 	 * fence-seq-cst: MO constraints formed in {r,w}_modification_order
 	 */
+
+	//model_print("meet a fence action. \n");
+
 	if (curr->is_acquire()) {
 		curr->get_cv()->merge(get_thread(curr)->get_acq_fence_cv());
+		SnapVector<ModelAction* > * fence_bag = new SnapVector<ModelAction *> ();
+		for(unsigned int i = 0; i < get_num_threads(); i++){
+			//model_print("calling the get last fence release. \n");
+			ModelAction* last_rel = get_last_fence_release(int_to_id(i)); // get the last fence_release action on each thread
+			if(last_rel != NULL){
+				//model_print("Thread %d last release fence is %d",i, last_rel->get_seq_number());
+				// const char *acqmo_str = curr->get_mo_str();
+				// const char *relmo_str = last_rel->get_mo_str();
+				// const char *reltype_str = last_rel->get_type_str();
+
+				//model_print("The fence_acq type is: %7s, the fence_rel type is %7s, action type is %7s. ",acqmo_str, relmo_str, reltype_str);
+				if(curr->could_synchronize_with(last_rel)){
+					//model_print("these two fence are synchronized\n");
+					SnapVector<ModelAction* > * tmp_bag = computeUpdate_fence(curr, last_rel);
+					fence_bag = maxVec(tmp_bag, fence_bag);
+
+				}
+			}
+		}
+
+		
+		int acq_tid = curr->get_tid();
+		Thread *acq_thr = get_thread(acq_tid);
+		fence_bag = maxVec(fence_bag, acq_thr->get_local_vec());
+		if(curr->is_seqcst()){
+			fence_bag = maxVec(curr->get_bag(), fence_bag); // if this is a fence_seqcst, update the result with last sc action
+		}
+		curr->set_bag(fence_bag);
+		acq_thr->set_local_vec(fence_bag);
+		//model_print("\n finish update in process fence. ");
+		//acq_thr->print_local_vec();
+		
 	}
 }
 
@@ -690,6 +1221,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 	default:
 		break;
 	}
+
 }
 
 /**
@@ -706,6 +1238,7 @@ void ModelExecution::process_thread_action(ModelAction *curr)
 bool ModelExecution::initialize_curr_action(ModelAction **curr)
 {
 	if ((*curr)->is_rmwc() || (*curr)->is_rmw()) {
+		//model_print("meet rmwc / rmw ");
 		ModelAction *newcurr = process_rmw(*curr);
 		delete *curr;
 
@@ -819,6 +1352,34 @@ bool ModelExecution::check_action_enabled(ModelAction *curr) {
 	return true;
 }
 
+
+SnapVector<ModelAction*> * ModelExecution::computeBag_sc(ModelAction *curr){
+	// first get the last sc action with bag
+	sllnode<ModelAction*> *it;
+	for (it = action_trace.end();it != NULL;it = it->getPrev()) { // get all actions before current action
+		ModelAction *act = it->getVal();
+		bool before_flag = false;
+		if(act == curr){
+			before_flag = true;
+		}
+
+		if(before_flag){
+			if(act->is_seqcst() && act->checkbag()){ // meet a sc action with bag
+				// model_print("we meet a sc action with bag. \n");
+				curr->set_bag(act->get_bag());
+				break; // break the loop if meet one sc action with bag
+			}
+			if(act->is_thread_start()){ // meet the thread start and still no sc action - give the empty
+				SnapVector<ModelAction*> * empty_bag = new SnapVector<ModelAction *> ();
+				curr->set_bag(empty_bag);
+				break;
+			}
+		}
+	
+	}
+	return curr->get_bag();
+}
+
 /**
  * This is the heart of the model checker routine. It performs model-checking
  * actions corresponding to a given "current action." Among other processes, it
@@ -831,60 +1392,203 @@ bool ModelExecution::check_action_enabled(ModelAction *curr) {
  * curr
  */
 ModelAction * ModelExecution::check_current_action(ModelAction *curr)
-{
+{	
+	
+	//model_print("before initialize: check external - %u. \n", curr->checkexternal());
+
+	
+	//scheduler->print_current_avail_threads();
 	ASSERT(curr);
 	bool newly_explored = initialize_curr_action(&curr);
 
 	DBG();
 
 	wake_up_sleeping_actions();
-	if(curr->in_count()){
-		instrnum++;
-		// model_print("current we have %d instrnums. \n", instrnum);
-	}
+
+	//model_print("after initialize: check external - %u. \n", curr->checkexternal());
 
 	SnapVector<ModelAction *> * rf_set = NULL;
 	bool canprune = false;
-	/* Build may_read_from set for newly-created actions */
-	if (curr->is_read() && newly_explored) {
-		rf_set = build_may_read_from(curr);
-		canprune = process_read(curr, rf_set);
-		delete rf_set;
-	} else
-		ASSERT(rf_set == NULL);
+	
+	// how many read external job on the current thread now
+	// if(curr->checkexternal()){
+	// 	model_print("we meet the read action - external again. \n");
+	// }
+	uint curr_threadid = id_to_int(curr->get_tid());
+	Thread* curr_thread = get_thread(curr);
 
-	/* Add the action to lists if not the second part of a rmw */
-	if (newly_explored) {
-#ifdef COLLECT_STAT
-		record_atomic_stats(curr);
-#endif
-		add_action_to_lists(curr, canprune);
+	const char *type_str = curr->get_type_str();
+	const char *mo_str = curr->get_mo_str();
+	//model_print("\n current action type is  %-14s. on thread %d, sequence number is : %d , mo_type is : %7s. \n", 
+		//type_str, curr_threadid, curr->get_seq_number(), mo_str);
+
+
+	bool change_point = false;
+
+	// check if the change point now
+	if(curr->in_count() && newly_explored){
+		//weak memory 
+		// step1: increase the instructions count
+		incInstrnum();
+		// model_print("Current instr. nums: %d. \n", getInstrnum());
+		//step2: check if a prority change point
+		int reach_chg_idx = scheduler->find_chgidx(getInstrnum());
+		if(reach_chg_idx != -1){
+			//model_print("reach the %d change point. Change priority of thread %d. \n", reach_chg_idx, scheduler->get_highest_thread());
+			//scheduler->print_highvec();
+			//scheduler->print_lowvec();
+			scheduler->movethread(reach_chg_idx, scheduler->get_highest_thread()); 
+			//scheduler->print_highvec();
+			//scheduler->print_lowvec();
+			//step4: meet the change point: move thread and return the second highest thread
+			// model_print("before set_external : seq_num: %d, current action type is  %-14s. external_flag: %u \n", curr->get_seq_number(),type_str, curr->checkexternal());
+			//model_print("change point. ");
+			//scheduler->print_current_avail_threads();
+			//model_print("currently highest prio thread - thread %d. \n", scheduler->get_highest_thread());
+			curr->set_external_flag();  
+			change_point = true;
+			if(curr->is_read()){ // we change the priority at a read operation
+				scheduler->add_external_readnum_thread(curr_threadid);
+			}
+			//scheduler->print_external_readnum_thread();
+		}
 	}
 
-	if (curr->is_write())
-		add_write_to_lists(curr);
+	// though we change the current thread prio and want to switch to another thread, but we may still have one enabled thread
+	uint current_highid = scheduler->get_highest_thread();
+	bool continue_flag = false; 
+	if(change_point && current_highid == curr_threadid){// only one thread is enabled , we still process this thread
+		continue_flag = true;
+	}
 
-	process_thread_action(curr);
 
-	if (curr->is_write())
-		process_write(curr);
+	// if(curr->in_count() && ( getInstrnum() <= 2 * maxinstr || ( getInstrnum() % (2 * maxinstr) != 0 ))){
+	if(curr->in_count() && getInstrnum() <= 2 * maxinstr ){ // only the related actions
+		if(change_point && (!continue_flag)){
+			//model_print("now we are at the %d change point. \n", scheduler->find_chgidx(getInstrnum()));
+			
+			curr_thread->set_pending(curr);
+			//process_thread_action(curr);
+		}
+		//((continue_flag && curr->checkexternal()) || curr->checkexternal())
+		else{ // change the prio but only one thread or not change point
+			if(curr->is_seqcst()){ // first process the seqcst actions
+				computeBag_sc(curr); // give all sc curr a bag
+			}
 
-	if (curr->is_fence())
-		process_fence(curr);
+			// process a read action
+			if (curr->is_read() && newly_explored ) { // process read action
+				int read_external_num_on_curr_thread = scheduler->get_external_readnum_thread(curr_threadid);
+				if(read_external_num_on_curr_thread){ // this thread has read external job
+					//model_print("we meet a pending read again have read external job. - read external\n");
+					rf_set = build_may_read_from(curr, history_);
+					//canprune = process_read(curr, rf_set);
+					curr->reset_external_flag();
+					canprune = process_read(curr, rf_set, true);
+					delete rf_set;
+					scheduler->deleteone_external_readnum_thread(curr_threadid); // delete one read external job on this thread
+					//scheduler->print_external_readnum_thread();
+				}
+				else{
+					curr->reset_external_flag();
+					//model_print(" no external read job. - read local \n");
+					rf_set = build_may_read_from(curr, history_);
+					canprune = process_read(curr, rf_set, false); // read internally
+					delete rf_set;
+				}
+			}
+			else{
+				ASSERT(rf_set == NULL);
+			}  
 
-	if (curr->is_mutex_op())
-		process_mutex(curr);
+			// after processing read action
 
-	return curr;
+	
+
+				/* Add the action to lists if not the second part of a rmw */
+			if (newly_explored) {
+			#ifdef COLLECT_STAT
+					record_atomic_stats(curr);
+			#endif
+					add_action_to_lists(curr, canprune);
+			}
+
+			if (curr->is_write())
+				add_write_to_lists(curr);
+
+			process_thread_action(curr);
+			//model_print("successfully process thread action. \n");
+
+			if (curr->is_write())
+				process_write(curr);
+
+			if (curr->is_fence())
+				process_fence(curr);
+
+			if (curr->is_mutex_op())
+				process_mutex(curr);
+			
+
+		}	
+
+	}
+	else{ // not the target type of action - not change this type of action
+
+		// larger than the maxinstr
+		if(curr->is_read() ){
+			//model_print("larger than the maxinstr. \n");
+			SnapVector<ModelAction *> * rf_set = NULL;
+			bool canprune = false;
+			if (newly_explored) {
+				rf_set = build_may_read_from(curr, history_);
+				//canprune = process_read(curr, rf_set);
+				canprune = process_read(curr, rf_set);
+				delete rf_set;
+			} else
+				ASSERT(rf_set == NULL);
+		}
+
+
+
+
+			if (newly_explored) {
+	#ifdef COLLECT_STAT
+			record_atomic_stats(curr);
+	#endif
+			add_action_to_lists(curr, canprune);
+		}
+
+		if (curr->is_write())
+			add_write_to_lists(curr);
+
+		process_thread_action(curr);
+
+		if (curr->is_write())
+			process_write(curr);
+
+		if (curr->is_fence())
+			process_fence(curr);
+
+		if (curr->is_mutex_op())
+			process_mutex(curr);
+		}
+
+		//model_print("end the check current action. \n");
+		return curr;
 }
 
 /** Close out a RMWR by converting previous RMWR into a RMW or READ. */
 ModelAction * ModelExecution::process_rmw(ModelAction *act) {
+	
 	ModelAction *lastread = get_last_action(act->get_tid());
+	//model_print("process_rmw: get last action \n");
 	lastread->process_rmw(act);
+	//model_print("process_rmw: process last_action \n");
 	if (act->is_rmw()) {
+		//model_print("start add edge");
 		mo_graph->addRMWEdge(lastread->get_reads_from(), lastread);
 	}
+	//model_print("process_rmw: successfully process_rmw \n");
 	return lastread;
 }
 
@@ -1249,6 +1953,8 @@ void ModelExecution::add_action_to_lists(ModelAction *act, bool canprune)
 		void *mutex_loc = (void *) act->get_value();
 		act->setActionRef(get_safe_ptr_action(&obj_map, mutex_loc)->add_back(act));
 	}
+
+	//model_print("successfully add action to list. \n");
 }
 
 void insertIntoActionList(action_list_t *list, ModelAction *act) {
@@ -1447,7 +2153,7 @@ bool valequals(uint64_t val1, uint64_t val2, int size) {
  * @param curr is the current ModelAction that we are exploring; it must be a
  * 'read' operation.
  */
-SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *curr)
+SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *curr, int history_)
 {
 	SnapVector<simple_action_list_t> *thrd_lists = obj_wr_thrd_map.get(curr->get_location());
 	unsigned int i;
@@ -1460,12 +2166,16 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 
 	SnapVector<ModelAction *> * rf_set = new SnapVector<ModelAction *>();
 
+
 	/* Iterate over all threads */
+	int old_size = 0;
 	if (thrd_lists != NULL)
 		for (i = 0;i < thrd_lists->size();i++) {
+			//model_print("search on %d threads. current is the %dth thread.\n", thrd_lists->size(), i);
 			/* Iterate over actions in thread, starting from most recent */
 			simple_action_list_t *list = &(*thrd_lists)[i];
 			sllnode<ModelAction *> * rit;
+			int search_history = 0; // the variable to save the current search history on this thread
 			for (rit = list->end();rit != NULL;rit=rit->getPrev()) {
 				ModelAction *act = rit->getVal();
 
@@ -1495,11 +2205,24 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 				if (allow_read) {
 					/* Only add feasible reads */
 					rf_set->push_back(act);
+					search_history++; 
+					if(search_history == history_) {
+						//model_print("add %d reads, meet the search bound. \n", rf_set->size() - old_size);
+						old_size = rf_set->size();
+						break; // stop searching when meet the search boud
+					}
 				}
 
 				/* Include at most one act per-thread that "happens before" curr */
-				if (act->happens_before(curr))
+				if (act->happens_before(curr)){
+					//model_print("meet the hb curr, add %d reads. \n", rf_set->size() - old_size);
+					old_size = rf_set->size();
 					break;
+				}
+					
+
+				// count the allow_read write operations
+				
 			}
 		}
 
@@ -1508,6 +2231,7 @@ SnapVector<ModelAction *> *  ModelExecution::build_may_read_from(ModelAction *cu
 		curr->print();
 		model_print("End printing read_from_past\n");
 	}
+	//model_print("build_may_read_from, current history is: %d, rf_set size is : %d \n", history_, rf_set->size());
 	return rf_set;
 }
 
@@ -1634,8 +2358,21 @@ void ModelExecution::add_thread(Thread *t)
 	if (i >= thread_map.size())
 		thread_map.resize(i + 1);
 	thread_map[i] = t;
-	if (!t->is_model_thread())
+	//t->init_vec();
+	if (!t->is_model_thread()){
 		scheduler->add_thread(t);
+
+		if(id_to_int(t->get_id()) != 1){
+			Thread * main_thread = model->get_thread(int_to_id(1));
+			//model_print("init a new thread: 1)get the main thread\n");
+			SnapVector<ModelAction*> *main_localvec = main_thread->get_local_vec();
+			t->set_local_vec(main_localvec);
+			//model_print("2) give it the main localvec\n");
+			//t->print_local_vec();
+		}
+		
+	}
+
 }
 
 /**
@@ -1715,8 +2452,15 @@ bool ModelExecution::is_enabled(thread_id_t tid) const
  * @return The next thread to run, if the current action will determine this
  * selection; otherwise NULL
  */
-Thread * ModelExecution::action_select_next_thread(const ModelAction *curr) const
-{
+Thread * ModelExecution::action_select_next_thread(const ModelAction *curr, bool change_flag) const
+{	
+	//model_print("now the action select next thread. \n");
+	if(curr->in_count() && change_flag){
+		//model_print("now change point: select the new highest thread.");
+		//scheduler->print_current_avail_threads();
+		//model_print("return the highest thread: %d \n", scheduler->get_highest_thread());
+		return get_thread(int_to_id(scheduler->get_highest_thread()));
+	}
 	/* Do not split atomic RMW */
 	if (curr->is_rmwr())
 		return get_thread(curr);
@@ -1727,6 +2471,8 @@ Thread * ModelExecution::action_select_next_thread(const ModelAction *curr) cons
 	if (curr->get_type() == PTHREAD_CREATE) {
 		return curr->get_thread_operand();
 	}
+
+
 	return NULL;
 }
 
@@ -1749,7 +2495,15 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 	if (curr_thrd->is_blocked() || curr_thrd->is_complete())
 		scheduler->remove_thread(curr_thrd);
 
-	return action_select_next_thread(curr);
+	
+	
+	bool change_flag = curr->checkexternal();
+	// if(change_flag){
+	// 	model_print("now we reselect the highest prio thread. \n");
+	// }
+
+	//model_print("call the action select next thread.\n");
+	return action_select_next_thread(curr, change_flag);
 }
 
 /** This method removes references to an Action before we delete it. */

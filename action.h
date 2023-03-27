@@ -82,7 +82,6 @@ typedef enum action_type {
 	ATOMIC_NOP	// < Placeholder
 } action_type_t;
 
-
 /**
  * @brief Represents a single atomic action
  *
@@ -103,6 +102,11 @@ public:
 
 	thread_id_t get_tid() const { return tid; }
 	action_type get_type() const { return type; }
+
+	const char * get_type_str() const;
+	//const char * get_type_str() const;
+	const char * get_mo_str() const;
+
 	void set_type(action_type _type) { type = _type; }
 	void set_free() { type = READY_FREE; }
 	memory_order get_mo() const { return order; }
@@ -168,6 +172,7 @@ public:
 	bool is_conflicting_lock(const ModelAction *act) const;
 	bool could_synchronize_with(const ModelAction *act) const;
 	int getSize() const;
+
 	Thread * get_thread_operand() const;
 	void create_cv(const ModelAction *parent = NULL);
 	ClockVector * get_cv() const { return cv; }
@@ -197,12 +202,22 @@ public:
 
 	void setActionRef(sllnode<ModelAction *> *ref) { action_ref = ref; }
 	sllnode<ModelAction *> * getActionRef() { return action_ref; }
+
+
+	// weak memory - bag flag
+	void init_bagflag();
+	void set_bag(SnapVector<ModelAction*> *E);
+	bool checkbag();
+	void set_external_flag();
+	void reset_external_flag();
+	bool checkexternal();
+	void print_bag();
+	SnapVector<ModelAction*> *get_bag();
 	bool in_count() const;
 
 	SNAPSHOTALLOC
 private:
-	const char * get_type_str() const;
-	const char * get_mo_str() const;
+
 
 	/** @brief A pointer to the memory location for this action. */
 	void *location;
@@ -257,6 +272,11 @@ private:
 	 * should represent the action's position in the execution order.
 	 */
 	modelclock_t seq_number;
+
+	// weak memory - add bag flag and bag
+	bool bag_flag;
+	bool read_external_flag;
+	SnapVector<ModelAction* > * bag;
 };
 
 #endif	/* __ACTION_H__ */

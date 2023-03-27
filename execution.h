@@ -18,6 +18,8 @@
 #include "mutex.h"
 #include <condition_variable>
 #include "classlist.h"
+//#include "action.h"
+#include "threads-model.h"
 
 #define INITIAL_THREAD_ID	0
 #define MAIN_THREAD_ID		1
@@ -41,7 +43,12 @@ public:
 	~ModelExecution();
 
 	struct model_params * get_params() const { return params; }
-	void setParams(struct model_params * _params) {params = _params;}
+	void setParams(struct model_params * _params) {
+		params = _params;
+		maxinstr = 5 * params->maxinstr; // set the livelock bound for read nums
+		model_print("The limit of read nums is %d. \n", maxinstr);
+		history_ = params->history;
+		}
 
 	Thread * take_step(ModelAction *curr);
 
@@ -99,6 +106,26 @@ public:
 #ifdef TLS
 	pthread_key_t getPthreadKey() {return pthreadkey;}
 #endif
+	//pctwm
+	
+	void incInstrnum(){
+		instrnum++;
+	}
+
+	int getInstrnum(){
+		return instrnum;
+	}
+
+	void print_actset(SnapVector<ModelAction *> * act_set);
+
+
+
+	// weak memory function
+	SnapVector<ModelAction *> * computeUpdate(ModelAction *rd, ModelAction * curr);
+	SnapVector<ModelAction *> * computeUpdate_fence(ModelAction *fence_acq, ModelAction * fence_rel);
+	SnapVector<ModelAction*> * updateVec(SnapVector<ModelAction*> *input_vec, ModelAction* curr);
+	SnapVector<ModelAction*> * maxVec(SnapVector<ModelAction*> * Eacc, SnapVector<ModelAction*> *local_vec);
+	SnapVector<ModelAction *> * computeBag_sc(ModelAction *curr);
 	SNAPSHOTALLOC
 private:
 	int get_execution_number() const;
@@ -107,6 +134,9 @@ private:
 	modelclock_t get_next_seq_num();
 	bool next_execution();
 	bool initialize_curr_action(ModelAction **curr);
+	//weak memory
+	bool process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set, bool read_external);\
+	//c11tester
 	bool process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set);
 	void process_write(ModelAction *curr);
 	void process_fence(ModelAction *curr);
@@ -121,7 +151,7 @@ private:
 	ModelAction * get_last_seq_cst_write(ModelAction *curr) const;
 	ModelAction * get_last_seq_cst_fence(thread_id_t tid, const ModelAction *before_fence) const;
 	ModelAction * get_last_unlock(ModelAction *curr) const;
-	SnapVector<ModelAction *> * build_may_read_from(ModelAction *curr);
+	SnapVector<ModelAction *> * build_may_read_from(ModelAction *curr, int history);
 	ModelAction * process_rmw(ModelAction *curr);
 	bool r_modification_order(ModelAction *curr, const ModelAction *rf, SnapVector<ModelAction *> *priorset, bool *canprune);
 	void w_modification_order(ModelAction *curr);
@@ -130,6 +160,8 @@ private:
 	ClockVector * computeMinimalCV();
 	void removeAction(ModelAction *act);
 	void fixupLastAct(ModelAction *act);
+
+
 
 #ifdef TLS
 	pthread_key_t pthreadkey;
@@ -206,10 +238,11 @@ private:
 
 	Fuzzer * fuzzer;
 
-	Thread * action_select_next_thread(const ModelAction *curr) const;
+	Thread * action_select_next_thread(const ModelAction *curr, const bool move_flag) const;
 
 	bool isfinished;
-	int instrnum;
+
+	int instrnum, maxinstr, history_;
 };
 
 #endif	/* __EXECUTION_H__ */

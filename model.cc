@@ -71,20 +71,20 @@ void print_params(struct model_params *params){
 		"-x, --maxexec=NUM           Maximum number of executions. Default: 10 Now: %u\n"
 		"-m, --minsize=NUM           Minimum number of actions to keep Default: 0 Now: %u\n"
 		"-f, --freqfree=NUM          Frequency to free actions Default:500000 Now: %u\n"
-		"-l, --maxscheduler=NUM		 Scheduler length limitation Default:50 Now: %u\n"
+		//"-l, --maxscheduler=NUM		 Scheduler length limitation Default:50 Now: %u\n"
 		"-b, --bugdepth=NUM			 bugdepth Default:5 Now: %u\n"
-		"-v, --version=NUM			 c11testerversion Default:0 Now: %u\n"
-		"-e, --maxread=NUM			 read num bounds: Default:30 Now: %u\n"
-		"-s, --seed=NUM			 	 random seed: Default:0 Now: %u\n",
+		"-p, --version=NUM			 c11testerversion Default:0 Now: %u\n"
+		"-i, --maxinstr=NUM			 read num bounds: Default:30 Now: %u\n"
+		"-y, --history=NUM			 rf_set searcg bounds: Default:20 Now: %u\n",
 		params->verbose,
 		params->maxexecutions,
 		params->traceminsize,
 		params->checkthreshold,
-		params->maxscheduler,
+		// params->maxscheduler,
 		params->bugdepth,
 		params->version,
-		params->maxread,
-		params->seed);
+		params->maxinstr,
+		params->history);
 }
 
 void createModelIfNotExist() {
@@ -128,7 +128,6 @@ ModelChecker::ModelChecker() :
 	
 	execution->setParams(&params);
 	scheduler->setParams(&params);
-	scheduler->print_chg();
 	initRaceDetector();
 	/* Configure output redirection for the model-checker */
 	install_handler();
@@ -210,6 +209,7 @@ Thread * ModelChecker::get_next_thread()
 	 * Have we completed exploring the preselected path? Then let the
 	 * scheduler decide
 	 */
+	//model_print("calling the get_next_thread. \n");
 	return scheduler->select_next_thread();
 }
 
@@ -343,10 +343,8 @@ void ModelChecker::finish_execution(bool more_executions)
 
 	record_stats();
 	/* Output */
-	if ( (complete && params.verbose) || params.verbose>1 || (complete && execution->have_bug_reports())){
-		model_print("scheduler length is %d. \n", scheduler->getSchelen());
+	if ( (complete && params.verbose) || params.verbose>1 || (complete && execution->have_bug_reports()))
 		print_execution(complete);
-	}
 	else
 		clear_program_output();
 
@@ -418,6 +416,7 @@ Thread* ModelChecker::getNextThread(Thread *old)
 		if (!thr->is_complete()) {
 			if (!thr->get_pending()) {
 				curr_thread_num = i;
+				//model_print("getNextThread: find one nextThread. the thread is %d \n", id_to_int(thr->get_id()));
 				nextThread = thr;
 				break;
 			}
@@ -434,6 +433,7 @@ Thread* ModelChecker::getNextThread(Thread *old)
 
 			/* Allow pending relaxed/release stores or thread actions to perform first */
 			else if (!chosen_thread) {
+				//model_print("getNextThread: empty chosen thread. \n");
 				if (act->is_write()) {
 					std::memory_order order = act->get_mo();
 					if (order == std::memory_order_relaxed || \
@@ -551,10 +551,20 @@ bool ModelChecker::handleChosenThread(Thread *old)
 	chosen_thread->set_pending(NULL);
 	chosen_thread = execution->take_step(curr);
 
+	// model_print("now the handle Chosen thread. \n");
+	// if(chosen_thread != NULL){
+	// 	model_print("current chosen thread is %d \n", id_to_int(chosen_thread->get_id()));
+	// }
+	// else{
+	// 	model_print("current chosen thread is NULL \n");
+	// }
+
 	if (should_terminate_execution()) {
 		finishRunExecution(old);
+		//model_print("finish handlechosenthread. \n");
 		return false;
 	} else {
+		//model_print("not finish yet. \n");
 		return true;
 	}
 }
@@ -564,13 +574,16 @@ void ModelChecker::startChecker() {
 	//Need to initial random number generator state to avoid resets on rollback
 	//initstate(423121, random_state, sizeof(random_state));
 	uint64_t seed = get_nanotime();
+	// uint64_t seed = 33;
 	srandom(seed);
+	model_print("the seed is %u", seed);
 
 	snapshot = take_snapshot();
 
 	//reset random number generator state
 	//setstate(random_state);
 	seed = get_nanotime();
+	// seed = 33;
 	srandom(seed);
 
 	install_trace_analyses(get_execution());
