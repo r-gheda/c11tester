@@ -264,17 +264,6 @@ Thread * Scheduler::select_next_thread()
 			auto event = cur_thread->get_pending();
 			if(event == e_star)
 				continue;
-			// check if event and e_star are same 
-			bool is_race_event_e_star = false;
-			
-			auto e_star_loc = e_star->get_location();
-			auto event_loc = event->get_location();
-
-			is_race_event_e_star = (e_star_loc == event_loc); 
-
-			if(!is_race_event_e_star)
-				continue;
-			prioity_map.erase(event);
 		}
 		thread = model->get_thread(e_star->get_tid());
 		// Some threads are available
