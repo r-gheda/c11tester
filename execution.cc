@@ -697,6 +697,8 @@ SnapVector<ModelAction *> *  ModelExecution::computeUpdate_fence(ModelAction *fe
 //  */
 bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set, bool read_external)
 {
+	read_external = true; // always read externally as well
+	
 	SnapVector<ModelAction *> * priorset = new SnapVector<ModelAction *>();
 	bool hasnonatomicstore = hasNonAtomicStore(curr->get_location());
 	if (hasnonatomicstore) {
@@ -1423,7 +1425,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		//type_str, curr_threadid, curr->get_seq_number(), mo_str);
 
 
-	bool change_point = false;
+	bool change_point = true;
 
 	// check if the change point now
 	if(curr->in_count() && newly_explored){
@@ -1463,7 +1465,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 
 	// if(curr->in_count() && ( getInstrnum() <= 2 * maxinstr || ( getInstrnum() % (2 * maxinstr) != 0 ))){
-	if(curr->in_count() && getInstrnum() <= 2 * maxinstr ){ // only the related actions
+	//if(curr->in_count()){ // only the related actions
 		if(change_point && (!continue_flag)){
 			//model_print("now we are at the %d change point. \n", scheduler->find_chgidx(getInstrnum()));
 			
@@ -1478,8 +1480,8 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 			// process a read action
 			if (curr->is_read() && newly_explored ) { // process read action
-				int read_external_num_on_curr_thread = scheduler->get_external_readnum_thread(curr_threadid);
-				if(read_external_num_on_curr_thread){ // this thread has read external job
+				//int read_external_num_on_curr_thread = scheduler->get_external_readnum_thread(curr_threadid);
+				// if(true){ // this thread has read external job
 					//model_print("we meet a pending read again have read external job. - read external\n");
 					rf_set = build_may_read_from(curr, history_);
 					//canprune = process_read(curr, rf_set);
@@ -1488,14 +1490,14 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 					delete rf_set;
 					scheduler->deleteone_external_readnum_thread(curr_threadid); // delete one read external job on this thread
 					//scheduler->print_external_readnum_thread();
-				}
-				else{
-					curr->reset_external_flag();
-					//model_print(" no external read job. - read local \n");
-					rf_set = build_may_read_from(curr, history_);
-					canprune = process_read(curr, rf_set, false); // read internally
-					delete rf_set;
-				}
+				// }
+				// else{
+				// 	curr->reset_external_flag();
+				// 	//model_print(" no external read job. - read local \n");
+				// 	rf_set = build_may_read_from(curr, history_);
+				// 	canprune = process_read(curr, rf_set, true); // read internally
+				// 	delete rf_set;
+				// }
 			}
 			else{
 				ASSERT(rf_set == NULL);
@@ -1531,47 +1533,47 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 
 		}	
 
-	}
-	else{ // not the target type of action - not change this type of action
+	// }
+	// else{ // not the target type of action - not change this type of action
 
-		// larger than the maxinstr
-		if(curr->is_read() ){
-			//model_print("larger than the maxinstr. \n");
-			SnapVector<ModelAction *> * rf_set = NULL;
-			bool canprune = false;
-			if (newly_explored) {
-				rf_set = build_may_read_from(curr, history_);
-				//canprune = process_read(curr, rf_set);
-				canprune = process_read(curr, rf_set);
-				delete rf_set;
-			} else
-				ASSERT(rf_set == NULL);
-		}
-
-
+	// 	// larger than the maxinstr
+	// 	if(curr->is_read() ){
+	// 		//model_print("larger than the maxinstr. \n");
+	// 		SnapVector<ModelAction *> * rf_set = NULL;
+	// 		bool canprune = false;
+	// 		if (newly_explored) {
+	// 			rf_set = build_may_read_from(curr, history_);
+	// 			//canprune = process_read(curr, rf_set);
+	// 			canprune = process_read(curr, rf_set);
+	// 			delete rf_set;
+	// 		} else
+	// 			ASSERT(rf_set == NULL);
+	// 	}
 
 
-			if (newly_explored) {
-	#ifdef COLLECT_STAT
-			record_atomic_stats(curr);
-	#endif
-			add_action_to_lists(curr, canprune);
-		}
 
-		if (curr->is_write())
-			add_write_to_lists(curr);
 
-		process_thread_action(curr);
+	// 		if (newly_explored) {
+	// #ifdef COLLECT_STAT
+	// 		record_atomic_stats(curr);
+	// #endif
+	// 		add_action_to_lists(curr, canprune);
+	// 	}
 
-		if (curr->is_write())
-			process_write(curr);
+	// 	if (curr->is_write())
+	// 		add_write_to_lists(curr);
 
-		if (curr->is_fence())
-			process_fence(curr);
+	// 	process_thread_action(curr);
 
-		if (curr->is_mutex_op())
-			process_mutex(curr);
-		}
+	// 	if (curr->is_write())
+	// 		process_write(curr);
+
+	// 	if (curr->is_fence())
+	// 		process_fence(curr);
+
+	// 	if (curr->is_mutex_op())
+	// 		process_mutex(curr);
+	// 	}
 
 		//model_print("end the check current action. \n");
 		return curr;
