@@ -8,7 +8,7 @@
 #include "execution.h"
 #include "fuzzer.h"
 #include <cstdlib>
-
+#include "action.h"
 
 
 /**
@@ -50,9 +50,10 @@ Scheduler::Scheduler() :
 	schelen_limit(0),
 	livelock(false),
 	//weak memory: save the highest thread by scheduler
-	highest_id(0)
-{
-}
+	highest_id(0),
+	priority_map{}{
+		priority_map[nullptr] = -1;
+	}
 
 	// related funcs
 	uint64_t Scheduler::scheduler_get_nanotime()
@@ -698,54 +699,83 @@ Thread * Scheduler::select_next_thread()
 			return NULL;	// No threads available and no threads sleeping.
 		}
 	} else {
-		// Some threads are available
-
-		incSchelen();
-		// model_print("limitation for shcelen: %d - prevent live lock \n", schelen_limit);
-		// model_print("current length: %d \n", getSchelen());
-		// print_avails(thread_list, avail_threads);
-		// print_chg();
-		// model_print("find change priority == scheduler length: %d \n", find_chgidx(getSchelen()));
-		// print_highvec();
-		// print_lowvec();
-
-		if(usingpct == 1){//pct
-			
-			if((execution->getInstrnum() % schelen_limit == 0 && execution->getInstrnum()!= 0) || (execution->getInstrnum() > 10 * schelen_limit)){
-				if(!livelock){
-					model_print("Reaching livelock! \n");
-					livelock = true;
-				}
-				//model_print("scheduler: randomly select thread \n");
-				thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
-				
-				//model_print("switch to another thread. thread %d \n", id_to_int(thread->get_id()));
+		ModelAction* e_star = nullptr;
+		for(int i = 0; i < avail_threads; i++)
+		{
+			auto thread = thread_list[i];
+			auto curr_tid = int_to_id(thread);
+			auto cur_thread = model->get_thread(curr_tid);
+			auto event = cur_thread->get_pending();
+			if(priority_map.find(event) == priority_map.end())
+			{
+				auto new_prio = (float)random() / (float)RAND_MAX;
+				priority_map[event] = new_prio;
 			}
-			else{//(execution->getInstrnum() <= schelen_limit ){
-				int threadpct = find_highest(thread_list, avail_threads);
-				highest_id = threadpct; // update the selection of scheduler - highest priority thread
-				thread = execution->getFuzzer()->selectThreadbyid(threadpct);
-				// if(find_chgidx(getSchelen()) != -1){ // reach change point - move thread
-				// 	movethread(find_chgidx(getSchelen()), threadpct);
-				// }	
+			if(priority_map[e_star] < priority_map[event])
+			{
+				e_star = event;
 			}
 		}
-		else{ //usingpct = 0; original pct
-			thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
-		} 
-
-
-		
-		// model_print("Scheduler picks thread: %d\n", id_to_int(thread->get_id()));
-		// model_print("\n\n");
-		
-		//original: randomly select
-		//thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
-		//model_print("Scheduler picks thread: %d\n", id_to_int(thread->get_id()));
-		
+		for(int i = 0; i < avail_threads; i++)
+		{
+			auto thread = thread_list[i];
+			auto curr_tid = int_to_id(thread);
+			auto cur_thread = model->get_thread(curr_tid);
+			auto event = cur_thread->get_pending();
+			if(event == e_star)
+				continue;
+		}
+		thread = model->get_thread(e_star->get_tid());
 	}
 
-	//curr_thread_index = id_to_int(thread->get_id());
+	// 	// Some threads are available
+
+	// 	incSchelen();
+	// 	// model_print("limitation for shcelen: %d - prevent live lock \n", schelen_limit);
+	// 	// model_print("current length: %d \n", getSchelen());
+	// 	// print_avails(thread_list, avail_threads);
+	// 	// print_chg();
+	// 	// model_print("find change priority == scheduler length: %d \n", find_chgidx(getSchelen()));
+	// 	// print_highvec();
+	// 	// print_lowvec();
+
+	// 	if(usingpct == 1){//pct
+			
+	// 		if((execution->getInstrnum() % schelen_limit == 0 && execution->getInstrnum()!= 0) || (execution->getInstrnum() > 10 * schelen_limit)){
+	// 			if(!livelock){
+	// 				model_print("Reaching livelock! \n");
+	// 				livelock = true;
+	// 			}
+	// 			//model_print("scheduler: randomly select thread \n");
+	// 			thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
+				
+	// 			//model_print("switch to another thread. thread %d \n", id_to_int(thread->get_id()));
+	// 		}
+	// 		else{//(execution->getInstrnum() <= schelen_limit ){
+	// 			int threadpct = find_highest(thread_list, avail_threads);
+	// 			highest_id = threadpct; // update the selection of scheduler - highest priority thread
+	// 			thread = execution->getFuzzer()->selectThreadbyid(threadpct);
+	// 			// if(find_chgidx(getSchelen()) != -1){ // reach change point - move thread
+	// 			// 	movethread(find_chgidx(getSchelen()), threadpct);
+	// 			// }	
+	// 		}
+	// 	}
+	// 	else{ //usingpct = 0; original pct
+	// 		thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
+	// 	} 
+
+
+		
+	// 	// model_print("Scheduler picks thread: %d\n", id_to_int(thread->get_id()));
+	// 	// model_print("\n\n");
+		
+	// 	//original: randomly select
+	// 	//thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
+	// 	//model_print("Scheduler picks thread: %d\n", id_to_int(thread->get_id()));
+		
+	// }
+
+	// //curr_thread_index = id_to_int(thread->get_id());
 	return thread;
 
 }

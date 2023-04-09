@@ -9,6 +9,7 @@
 #include "modeltypes.h"
 #include "classlist.h"
 #include "params.h"
+#include <unordered_map>
 
 typedef enum enabled_type {
 	THREAD_DISABLED,
@@ -149,6 +150,8 @@ private:
 	int highest_id;
 
 	SnapVector<bool> external_readnum_thread;
+
+	std::unordered_map<ModelAction*, float> priority_map;
 
 };
 
