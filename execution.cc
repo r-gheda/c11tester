@@ -420,7 +420,7 @@ SnapVector<ModelAction*> * ModelExecution::updateVec(SnapVector<ModelAction*> *i
 		ModelAction* iteract = (*input_vec)[i];
 		if(curr->get_location() == iteract->get_location()){
 			if(iteract->get_seq_number() > curr->get_seq_number()){ // update only when the new action(curr) has larger sequence number
-				(*input_vec)[i] = iteract;
+				(*input_vec)[i] = curr;
 			}
 			return input_vec;
 		}
