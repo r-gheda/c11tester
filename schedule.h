@@ -56,7 +56,7 @@ private:
 
 	/** The currently-running Thread */
 	Thread *current;
-	std::unordered_map<ModelAction*, float> prioity_map;
+	std::unordered_map<ModelAction*, float> priority_map;
 
 };
 

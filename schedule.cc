@@ -1,5 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
+#include <iostream>
+#include <cstdlib>
 
 #include "threads-model.h"
 #include "schedule.h"
@@ -17,7 +19,8 @@
 void enabled_type_to_string(enabled_type_t e, char *str)
 {
 	const char *res;
-	switch (e) {
+	switch (e)
+	{
 	case THREAD_DISABLED:
 		res = "disabled";
 		break;
@@ -36,15 +39,14 @@ void enabled_type_to_string(enabled_type_t e, char *str)
 }
 
 /** Constructor */
-Scheduler::Scheduler() :
-	execution(NULL),
-	enabled(NULL),
-	enabled_len(0),
-	curr_thread_index(0),
-	current(NULL),
-	prioity_map{}
+Scheduler::Scheduler() : execution(NULL),
+						 enabled(NULL),
+						 enabled_len(0),
+						 curr_thread_index(0),
+						 current(NULL),
+						 priority_map{}
 {
-	prioity_map[nullptr] = -1;
+	priority_map[nullptr] = -1;
 }
 
 /**
@@ -56,12 +58,15 @@ void Scheduler::register_engine(ModelExecution *execution)
 	this->execution = execution;
 }
 
-void Scheduler::set_enabled(Thread *t, enabled_type_t enabled_status) {
+void Scheduler::set_enabled(Thread *t, enabled_type_t enabled_status)
+{
 	int threadid = id_to_int(t->get_id());
-	if (threadid >= enabled_len) {
+	if (threadid >= enabled_len)
+	{
 		enabled_type_t *new_enabled = (enabled_type_t *)snapshot_malloc(sizeof(enabled_type_t) * (threadid + 1));
 		real_memset(&new_enabled[enabled_len], 0, (threadid + 1 - enabled_len) * sizeof(enabled_type_t));
-		if (enabled != NULL) {
+		if (enabled != NULL)
+		{
 			real_memcpy(new_enabled, enabled, enabled_len * sizeof(enabled_type_t));
 			snapshot_free(enabled);
 		}
@@ -123,7 +128,7 @@ bool Scheduler::is_sleep_set(thread_id_t tid) const
 bool Scheduler::all_threads_sleeping() const
 {
 	bool sleeping = false;
-	for (int i = 0;i < enabled_len;i++)
+	for (int i = 0; i < enabled_len; i++)
 		if (enabled[i] == THREAD_ENABLED)
 			return false;
 		else if (enabled[i] == THREAD_SLEEP_SET)
@@ -209,54 +214,86 @@ void Scheduler::wake(Thread *t)
  *
  *
  * @return The next Thread to run
- *//**
+ */
+/**
  * @brief Select a Thread to run via round-robin
  *
  *
  * @return The next Thread to run
  */
-Thread * Scheduler::select_next_thread()
+Thread *Scheduler::select_next_thread()
 {
 	int avail_threads = 0;
 	int sleep_threads = 0;
 	int thread_list[enabled_len], sleep_list[enabled_len];
-	Thread * thread;
+	Thread *thread;
 
-	for (int i = 0;i < enabled_len;i++) {
+	for (int i = 0; i < enabled_len; i++)
+	{
 		if (enabled[i] == THREAD_ENABLED)
 			thread_list[avail_threads++] = i;
 		else if (enabled[i] == THREAD_SLEEP_SET)
 			sleep_list[sleep_threads++] = i;
 	}
 
-	if (avail_threads == 0 && !execution->getFuzzer()->has_paused_threads()) {
-		if (sleep_threads != 0) {
+	if (avail_threads == 0 && !execution->getFuzzer()->has_paused_threads())
+	{
+		if (sleep_threads != 0)
+		{
 			// No threads available, but some threads sleeping. Wake up one of them
 			thread = execution->getFuzzer()->selectThread(sleep_list, sleep_threads);
 			remove_sleep(thread);
 			thread->set_wakeup_state(true);
-		} else {
-			return NULL;	// No threads available and no threads sleeping.
 		}
-	} else {
-		ModelAction* e_star = nullptr;
-		for(int i = 0; i < avail_threads; i++)
+		else
 		{
-			auto thread = thread_list[i];
-			auto curr_tid = int_to_id(thread);
-			auto cur_thread = model->get_thread(curr_tid);
-			auto event = cur_thread->get_pending();
-			if(prioity_map.find(event) == prioity_map.end())
-			{
-				auto new_prio = (float)random() / (float)RAND_MAX;
-				prioity_map[event] = new_prio;
-			}
-			if(prioity_map[e_star] < prioity_map[event])
-			{
-				e_star = event;
-			}
+			return NULL; // No threads available and no threads sleeping.
 		}
-		for(int i = 0; i < avail_threads; i++)
+	}
+	else
+	{
+		if (!std::getenv("ORIGIN"))
+		{
+			ModelAction *e_star = nullptr;
+			for (int i = 0; i < avail_threads; i++)
+			{
+				auto thread = thread_list[i];
+				auto curr_tid = int_to_id(thread);
+				auto cur_thread = model->get_thread(curr_tid);
+				auto event = cur_thread->get_pending();
+				if (priority_map.find(event) == priority_map.end())
+				{
+					auto new_prio = (float)random() / (float)RAND_MAX;
+					priority_map[event] = new_prio;
+				}
+				if (priority_map[e_star] < priority_map[event])
+				{
+					e_star = event;
+				}
+			}
+			for (int i = 0; i < avail_threads; i++)
+			{
+				auto thread = thread_list[i];
+				auto curr_tid = int_to_id(thread);
+				auto cur_thread = model->get_thread(curr_tid);
+				auto event = cur_thread->get_pending();
+				if (event == e_star)
+					continue;
+				// check if event and e_star are same
+				bool is_race_event_e_star = false;
+
+				auto e_star_loc = e_star->get_location();
+				auto event_loc = event->get_location();
+
+				is_race_event_e_star = (e_star_loc == event_loc);
+
+				if (!is_race_event_e_star)
+					continue;
+				priority_map.erase(event);
+			}
+			thread = model->get_thread(e_star->get_tid());
+		}
+		else
 		{
 			auto thread = thread_list[i];
 			auto curr_tid = int_to_id(thread);
@@ -265,17 +302,15 @@ Thread * Scheduler::select_next_thread()
 			if(event == e_star)
 				continue;
 		}
-		thread = model->get_thread(e_star->get_tid());
-		// Some threads are available
-		// thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
 	}
 
-	//curr_thread_index = id_to_int(thread->get_id());
+	// curr_thread_index = id_to_int(thread->get_id());
 	return thread;
 }
 
-void Scheduler::set_scheduler_thread(thread_id_t tid) {
-	curr_thread_index=id_to_int(tid);
+void Scheduler::set_scheduler_thread(thread_id_t tid)
+{
+	curr_thread_index = id_to_int(tid);
 }
 
 /**
@@ -294,7 +329,7 @@ void Scheduler::set_current_thread(Thread *t)
 /**
  * @return The currently-running Thread
  */
-Thread * Scheduler::get_current_thread() const
+Thread *Scheduler::get_current_thread() const
 {
 	ASSERT(!current || !current->is_model_thread());
 	return current;
@@ -309,7 +344,8 @@ void Scheduler::print() const
 	int curr_id = current ? id_to_int(current->get_id()) : -1;
 
 	model_print("Scheduler: ");
-	for (int i = 0;i < enabled_len;i++) {
+	for (int i = 0; i < enabled_len; i++)
+	{
 		char str[20];
 		enabled_type_to_string(enabled[i], str);
 		model_print("[%i: %s%s]", i, i == curr_id ? "current, " : "", str);
