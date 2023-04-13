@@ -295,9 +295,12 @@ Thread *Scheduler::select_next_thread()
 		}
 		else
 		{
-			// std::cerr << "ORIGINAL: " << std::endl;
-			// Some threads are available
-			thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
+			auto thread = thread_list[i];
+			auto curr_tid = int_to_id(thread);
+			auto cur_thread = model->get_thread(curr_tid);
+			auto event = cur_thread->get_pending();
+			if(event == e_star)
+				continue;
 		}
 	}
 
