@@ -15,6 +15,7 @@
 #include "threads-model.h"
 #include "bugmessage.h"
 #include "fuzzer.h"
+#include "iostream"
 
 #ifdef COLLECT_STAT
 static unsigned int atomic_load_count = 0;
@@ -1463,17 +1464,17 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 		continue_flag = true;
 	}
 
-
+	//model_print("Entering the commented Blcok");
 	// if(curr->in_count() && ( getInstrnum() <= 2 * maxinstr || ( getInstrnum() % (2 * maxinstr) != 0 ))){
 	//if(curr->in_count()){ // only the related actions
-		if(change_point && (!continue_flag)){
-			//model_print("now we are at the %d change point. \n", scheduler->find_chgidx(getInstrnum()));
+		// if(change_point && (!continue_flag)){
+		// 	//model_print("now we are at the %d change point. \n", scheduler->find_chgidx(getInstrnum()));
 			
-			curr_thread->set_pending(curr);
-			//process_thread_action(curr);
-		}
+		// 	curr_thread->set_pending(curr);
+		// 	//process_thread_action(curr);
+		// }
 		//((continue_flag && curr->checkexternal()) || curr->checkexternal())
-		else{ // change the prio but only one thread or not change point
+		// else{ // change the prio but only one thread or not change point
 			if(curr->is_seqcst()){ // first process the seqcst actions
 				computeBag_sc(curr); // give all sc curr a bag
 			}
@@ -1531,7 +1532,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 				process_mutex(curr);
 			
 
-		}	
+		// }	
 
 	// }
 	// else{ // not the target type of action - not change this type of action
@@ -1576,6 +1577,7 @@ ModelAction * ModelExecution::check_current_action(ModelAction *curr)
 	// 	}
 
 		//model_print("end the check current action. \n");
+		//model_print("Exiting the commented Blcok");
 		return curr;
 }
 
@@ -2456,6 +2458,7 @@ bool ModelExecution::is_enabled(thread_id_t tid) const
  */
 Thread * ModelExecution::action_select_next_thread(const ModelAction *curr, bool change_flag) const
 {	
+	//model_print("selecting next thread");
 	//model_print("now the action select next thread. \n");
 	if(curr->in_count() && change_flag){
 		//model_print("now change point: select the new highest thread.");
@@ -2505,7 +2508,8 @@ Thread * ModelExecution::take_step(ModelAction *curr)
 	// }
 
 	//model_print("call the action select next thread.\n");
-	return action_select_next_thread(curr, change_flag);
+	Thread *next_thread = action_select_next_thread(curr, change_flag);
+	return next_thread;
 }
 
 /** This method removes references to an Action before we delete it. */
