@@ -698,6 +698,15 @@ SnapVector<ModelAction *> *  ModelExecution::computeUpdate_fence(ModelAction *fe
 //  */
 bool ModelExecution::process_read(ModelAction *curr, SnapVector<ModelAction *> * rf_set, bool read_external)
 {
+	//Checking if the read from set is correct. 
+	int i;
+	std::cerr << "\n Processing read, the read from set is:  \n" ;
+	while (i < rf_set->size()) {
+	    ModelAction * rf = (*rf_set)[i];
+		std::cerr << rf->get_write_value() << "\n";
+		i += 1;
+	}
+
 	read_external = true; // always read externally as well
 	
 	SnapVector<ModelAction *> * priorset = new SnapVector<ModelAction *>();
