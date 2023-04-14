@@ -3,16 +3,16 @@
 #include <atomic>
 #include <cassert>
 
-int a{0};
+std::atomic_int a{0};
 
 void accumulate()
 {
-    a = 1;
-    a = 2;
-    a = 3;
-    a = 4;
-    a = 5;
-    a = 6;
+    a.store(1, std::memory_order_relaxed);
+    a.store(2, std::memory_order_relaxed);
+    a.store(3, std::memory_order_relaxed);
+    a.store(4, std::memory_order_relaxed);
+    a.store(5, std::memory_order_relaxed);
+    a.store(6, std::memory_order_relaxed);
 }
 
 void asse()
