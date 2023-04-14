@@ -1,0 +1,36 @@
+-x1 -p1 -k50 -d2 -y2
+
+** Test CDSChecker data structure benchmarks **
+barrier Runs: 500 | Data races: 368 | Total time: 3400ms
+Time: 7ms | Race rate: 73.6%
+chase-lev-deque Runs: 500 | Data races: 255 | Total time: 1080ms
+Time: 3ms | Race rate: 51.0%
+dekker-fences Runs: 500 | Data races: 500 | Total time: 2100ms
+Time: 5ms | Race rate: 100.0%
+linuxrwlocks Runs: 500 | Data races: 0 | Total time: 1750ms
+Time: 4ms | Race rate: 0.0%
+mcs-lock Runs: 500 | Data races: 0 | Total time: 3880ms
+Time: 8ms | Race rate: 0.0%
+mpmc-queue Runs: 500 | Data races: 0 | Total time: 3930ms
+Time: 8ms | Race rate: 0.0%
+ms-queue Runs: 500 | Data races: 500 | Total time: 5060ms
+Time: 11ms | Race rate: 100.0%
+
+
+-x1 -p1 -k15 -d2 -y2
+** Test CDSChecker data structure benchmarks **
+barrier Runs: 500 | Data races: 394 | Total time: 4740ms
+Time: 10ms | Race rate: 78.8%
+chase-lev-deque Runs: 500 | Data races: 500 | Total time: 5400ms
+Time: 11ms | Race rate: 100.0%
+dekker-fences Runs: 500 | Data races: 500 | Total time: 5450ms
+Time: 11ms | Race rate: 100.0%
+linuxrwlocks Runs: 500 | Data races: 0 | Total time: 5030ms
+Time: 11ms | Race rate: 0.0%
+mcs-lock Runs: 500 | Data races: 0 | Total time: 3770ms
+Time: 8ms | Race rate: 0.0%
+mpmc-queue Runs: 500 | Data races: 500 | Total time: 2660ms
+Time: 6ms | Race rate: 100.0%
+ms-queue Runs: 500 | Data races: 500 | Total time: 4140ms
+Time: 9ms | Race rate: 100.0%
+
