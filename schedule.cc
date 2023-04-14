@@ -10,6 +10,7 @@
 #include "execution.h"
 #include "fuzzer.h"
 #include "action.h"
+#include "cassert"
 
 /**
  * Format an "enabled_type_t" for printing
@@ -47,6 +48,15 @@ Scheduler::Scheduler() : execution(NULL),
 						 priority_map{}
 {
 	priority_map[nullptr] = -1;
+}
+
+
+void Scheduler::incSchelen(){
+	this->schelen++;
+}
+
+int Scheduler::getSchelen(){
+	return this->schelen;
 }
 
 /**
@@ -227,7 +237,6 @@ Thread *Scheduler::select_next_thread()
 	int sleep_threads = 0;
 	int thread_list[enabled_len], sleep_list[enabled_len];
 	Thread *thread;
-
 	for (int i = 0; i < enabled_len; i++)
 	{
 		if (enabled[i] == THREAD_ENABLED)
@@ -252,46 +261,79 @@ Thread *Scheduler::select_next_thread()
 	}
 	else
 	{
-		if (!std::getenv("ORIGIN"))
-		{
-			ModelAction *e_star = nullptr;
-			for (int i = 0; i < avail_threads; i++)
-			{
-				auto thread = thread_list[i];
-				auto curr_tid = int_to_id(thread);
-				auto cur_thread = model->get_thread(curr_tid);
-				auto event = cur_thread->get_pending();
-				if (priority_map.find(event) == priority_map.end())
-				{
-					auto new_prio = (float)random() / (float)RAND_MAX;
-					priority_map[event] = new_prio;
+		incSchelen();
+		std::cerr << "Schelen is: " << getSchelen() << std::endl;
+		if (true)
+		{	
+			if((getSchelen() % schelen_limit == 0 && getSchelen()!= 0) || (getSchelen() > 10 * schelen_limit)){
+				if(!livelock){
+					model_print("Reaching livelock! \n");
+					livelock = true;
 				}
-				if (priority_map[e_star] < priority_map[event])
+				//model_print("scheduler: randomly select thread \n");
+				thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
+				
+				//model_print("switch to another thread. thread %d \n", id_to_int(thread->get_id()));
+			}
+			else{
+				// uint e_star_hash = 0;
+				ModelAction * e_star = nullptr;
+				for (int i = 0; i < avail_threads; i++)
 				{
-					e_star = event;
+					auto thread = thread_list[i];
+					auto curr_tid = int_to_id(thread);
+					auto cur_thread = model->get_thread(curr_tid);
+					// std::cerr << "Reached this point \n";
+					auto event = cur_thread->get_pending();
+					// std::cerr << "Got Pending. \n";
+					assert(event!=NULL);
+					// std::cerr << event->get_tid() << std::endl;
+					// std::cerr << "Printed tid. \n";
+					// uint event_hash = event->hash() + 1;
+					// std::cerr << "Event: " << event_hash << std::endl;
+					if (priority_map.find(event) == priority_map.end())
+					{
+						auto new_prio = (float)random() / (float)RAND_MAX;
+						priority_map[event] = new_prio;
+						//std::cerr << "Priority of " << event_hash << " set to " << new_prio << std::endl;
+					}
+					if (e_star==nullptr || priority_map[e_star] < priority_map[event])
+					{
+						e_star = event;
+						// e_star_hash = event_hash;
+					}
 				}
+				for (int i = 0; i < avail_threads; i++)
+				{
+					auto thread = thread_list[i];
+					auto curr_tid = int_to_id(thread);
+					auto cur_thread = model->get_thread(curr_tid);
+					auto event = cur_thread->get_pending();
+					assert(event!=NULL);
+					// uint event_hash = event->hash()+1;
+					// std::cerr << "Event: " << event_hash << std::endl;
+					if (event == e_star)
+						continue;
+						
+					// check if event and e_star are in race
+					bool is_race_event_e_star = false;
+
+					auto e_star_loc = e_star->get_location();
+					auto event_loc = event->get_location();
+
+					is_race_event_e_star = (e_star_loc == event_loc);
+
+					if (!is_race_event_e_star)
+						continue;
+					priority_map.erase(event);
+				}
+				assert(e_star!=nullptr);
+				std::cerr << " tid of e_star: " << e_star->get_tid() << std::endl;
+				thread = model->get_thread(e_star->get_tid());
+				
+				//thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
+				assert(thread!=NULL);
 			}
-			for (int i = 0; i < avail_threads; i++)
-			{
-				auto thread = thread_list[i];
-				auto curr_tid = int_to_id(thread);
-				auto cur_thread = model->get_thread(curr_tid);
-				auto event = cur_thread->get_pending();
-				if (event == e_star)
-					continue;
-				// check if event and e_star are same
-				bool is_race_event_e_star = false;
-
-				auto e_star_loc = e_star->get_location();
-				auto event_loc = event->get_location();
-
-				is_race_event_e_star = (e_star_loc == event_loc);
-
-				if (!is_race_event_e_star)
-					continue;
-				priority_map.erase(event);
-			}
-			thread = model->get_thread(e_star->get_tid());
 		}
 		else
 		{

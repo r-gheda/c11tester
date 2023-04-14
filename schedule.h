@@ -25,7 +25,8 @@ class Scheduler {
 public:
 	Scheduler();
 	void register_engine(ModelExecution *execution);
-
+	void incSchelen();
+	int getSchelen();
 	void add_thread(Thread *t);
 	void remove_thread(Thread *t);
 	void sleep(Thread *t);
@@ -56,8 +57,10 @@ private:
 
 	/** The currently-running Thread */
 	Thread *current;
-	std::unordered_map<ModelAction*, float> priority_map;
-
+	std::unordered_map<ModelAction *, float> priority_map;
+	int schelen = 0;
+	bool livelock = false;
+	int schelen_limit = 60;
 };
 
 #endif	/* __SCHEDULE_H__ */
