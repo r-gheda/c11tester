@@ -17,7 +17,8 @@ void accumulate()
 
 void asse()
 {
-    assert(a != 5);
+    int temp = a.load(std::memory_order_relaxed);
+    assert(temp != 2);
 }
 
 int main()
@@ -26,5 +27,5 @@ int main()
     std::thread thr2(asse);
     thr1.join();
     thr2.join();
-    std::cout << "Hello world" << a;
+    // std::cout << "Hello world" << a;
 }
