@@ -256,6 +256,11 @@ private:
 	 * should represent the action's position in the execution order.
 	 */
 	modelclock_t seq_number;
+private:
+	float priority;
+public:
+	float get_priority() const;
+	void set_priority();
 };
 
 #endif	/* __ACTION_H__ */

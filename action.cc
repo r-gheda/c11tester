@@ -43,7 +43,8 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	priority((float)random() / (float)RAND_MAX)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc || type == ATOMIC_FENCE || type == ATOMIC_NOP);
@@ -75,7 +76,8 @@ ModelAction::ModelAction(action_type_t type, memory_order order, uint64_t value,
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	priority((float)random() / (float)RAND_MAX)
 {
 	Thread *t = thread_current();
 	this->tid = t!= NULL ? t->get_id() : -1;
@@ -106,7 +108,8 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	priority((float)random() / (float)RAND_MAX)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
@@ -140,7 +143,8 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	priority((float)random() / (float)RAND_MAX)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
@@ -175,7 +179,8 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	priority((float)random() / (float)RAND_MAX)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc || type == ATOMIC_FENCE);
@@ -769,3 +774,12 @@ cdsc::mutex * ModelAction::get_mutex() const
 	else
 		return NULL;
 }
+
+float ModelAction::get_priority() const{
+	return priority;
+}
+
+void ModelAction::set_priority(){
+	priority = (float)random() / (float)RAND_MAX;
+}
+
