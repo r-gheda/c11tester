@@ -503,8 +503,10 @@ bool ModelChecker::handleChosenThread(Thread *old)
 	}
 	if (!chosen_thread) {
 		chosen_thread = get_next_thread();
+		model_print("Choosing %d\n", chosen_thread->get_id());
 	}
 	if (!chosen_thread) {
+		model_print("Choosing again?\n");
 		finishRunExecution(old);
 		return false;
 	}

@@ -311,7 +311,7 @@ Thread *Scheduler::select_next_thread()
 					auto event = cur_thread->get_pending();
 					assert(event!=NULL);
 					// uint event_hash = event->hash()+1;
-					// std::cerr << "Event: " << event_hash << std::endl;
+					std::cerr << "Event: " << event->get_tid() << std::endl;
 					if (event == e_star)
 						continue;
 						
@@ -328,8 +328,8 @@ Thread *Scheduler::select_next_thread()
 					priority_map.erase(event);
 				}
 				assert(e_star!=nullptr);
-				std::cerr << " tid of e_star: " << e_star->get_tid() << std::endl;
-				thread = model->get_thread(e_star->get_tid());
+				// std::cerr << " tid of e_star: " << e_star->get_tid() << std::endl;
+				thread = execution->getFuzzer()->selectThreadbyid(int_to_id(e_star->get_tid()));
 				
 				//thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
 				assert(thread!=NULL);
