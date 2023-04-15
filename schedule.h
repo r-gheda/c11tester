@@ -57,7 +57,6 @@ private:
 
 	/** The currently-running Thread */
 	Thread *current;
-	std::unordered_map<ModelAction *, float> priority_map;
 	int schelen = 0;
 	bool livelock = false;
 	int schelen_limit = 60;

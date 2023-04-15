@@ -44,18 +44,17 @@ Scheduler::Scheduler() : execution(NULL),
 						 enabled(NULL),
 						 enabled_len(0),
 						 curr_thread_index(0),
-						 current(NULL),
-						 priority_map{}
+						 current(NULL)
 {
-	priority_map[nullptr] = -1;
 }
 
-
-void Scheduler::incSchelen(){
+void Scheduler::incSchelen()
+{
 	this->schelen++;
 }
 
-int Scheduler::getSchelen(){
+int Scheduler::getSchelen()
+{
 	return this->schelen;
 }
 
@@ -264,75 +263,54 @@ Thread *Scheduler::select_next_thread()
 		incSchelen();
 		std::cerr << "Schelen is: " << getSchelen() << std::endl;
 		if (true)
-		{	
-			if((getSchelen() % schelen_limit == 0 && getSchelen()!= 0) || (getSchelen() > 10 * schelen_limit)){
-				if(!livelock){
+		{
+			if ((getSchelen() % schelen_limit == 0 && getSchelen() != 0) || (getSchelen() > 10 * schelen_limit))
+			{
+				if (!livelock)
+				{
 					model_print("Reaching livelock! \n");
 					livelock = true;
 				}
-				//model_print("scheduler: randomly select thread \n");
+				// model_print("scheduler: randomly select thread \n");
 				thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
-				
-				//model_print("switch to another thread. thread %d \n", id_to_int(thread->get_id()));
 			}
-			else{
-				// uint e_star_hash = 0;
-				ModelAction * e_star = nullptr;
-				for (int i = 0; i < avail_threads; i++)
-				{
-					auto thread = thread_list[i];
-					auto curr_tid = int_to_id(thread);
-					auto cur_thread = model->get_thread(curr_tid);
-					// std::cerr << "Reached this point \n";
-					auto event = cur_thread->get_pending();
-					// std::cerr << "Got Pending. \n";
-					assert(event!=NULL);
-					// std::cerr << event->get_tid() << std::endl;
-					// std::cerr << "Printed tid. \n";
-					// uint event_hash = event->hash() + 1;
-					// std::cerr << "Event: " << event_hash << std::endl;
-					if (priority_map.find(event) == priority_map.end())
-					{
-						auto new_prio = (float)random() / (float)RAND_MAX;
-						priority_map[event] = new_prio;
-						//std::cerr << "Priority of " << event_hash << " set to " << new_prio << std::endl;
-					}
-					if (e_star==nullptr || priority_map[e_star] < priority_map[event])
-					{
-						e_star = event;
-						// e_star_hash = event_hash;
-					}
-				}
+			else
+			{
+				thread_id_t thread_with_largest_pri = -1;
+				float largest_pri = -1;
+				void *e_star_loc = nullptr;
 				for (int i = 0; i < avail_threads; i++)
 				{
 					auto thread = thread_list[i];
 					auto curr_tid = int_to_id(thread);
 					auto cur_thread = model->get_thread(curr_tid);
 					auto event = cur_thread->get_pending();
-					assert(event!=NULL);
-					// uint event_hash = event->hash()+1;
-					std::cerr << "Event: " << event->get_tid() << std::endl;
-					if (event == e_star)
-						continue;
-						
-					// check if event and e_star are in race
-					bool is_race_event_e_star = false;
-
-					auto e_star_loc = e_star->get_location();
-					auto event_loc = event->get_location();
-
-					is_race_event_e_star = (e_star_loc == event_loc);
-
-					if (!is_race_event_e_star)
-						continue;
-					priority_map.erase(event);
+					assert(event != NULL);
+					if (event->get_priority() > largest_pri)
+					{
+						largest_pri = event->get_priority();
+						thread_with_largest_pri = curr_tid;
+						e_star_loc = event->get_location();
+					}
+					else
+					{
+						model_print("find u\n");
+					}
 				}
-				assert(e_star!=nullptr);
-				// std::cerr << " tid of e_star: " << e_star->get_tid() << std::endl;
-				thread = execution->getFuzzer()->selectThreadbyid(int_to_id(e_star->get_tid()));
-				
-				//thread = execution->getFuzzer()->selectThread(thread_list, avail_threads);
-				assert(thread!=NULL);
+				for (int i = 0; i < avail_threads; i++)
+				{
+					auto thread = thread_list[i];
+					auto curr_tid = int_to_id(thread);
+					if(thread_with_largest_pri == curr_tid)
+						continue;
+					auto cur_thread = model->get_thread(curr_tid);
+					auto event = cur_thread->get_pending();
+					assert(event!=NULL);
+					if(e_star_loc == event->get_location())
+						event->set_priority();
+				}
+				thread = execution->getFuzzer()->selectThreadbyid(thread_with_largest_pri);
+				assert(thread != NULL);
 			}
 		}
 		else
