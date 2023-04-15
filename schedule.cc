@@ -298,18 +298,18 @@ Thread *Scheduler::select_next_thread()
 						model_print("find u\n");
 					}
 				}
-				for (int i = 0; i < avail_threads; i++)
-				{
-					auto thread = thread_list[i];
-					auto curr_tid = int_to_id(thread);
-					if(thread_with_largest_pri == curr_tid)
-						continue;
-					auto cur_thread = model->get_thread(curr_tid);
-					auto event = cur_thread->get_pending();
-					assert(event!=NULL);
-					if(e_star_loc == event->get_location())
-						event->set_priority();
-				}
+				// for (int i = 0; i < avail_threads; i++)
+				// {
+				// 	auto thread = thread_list[i];
+				// 	auto curr_tid = int_to_id(thread);
+				// 	if(thread_with_largest_pri == curr_tid)
+				// 		continue;
+				// 	auto cur_thread = model->get_thread(curr_tid);
+				// 	auto event = cur_thread->get_pending();
+				// 	assert(event!=NULL);
+				// 	if(e_star_loc == event->get_location())
+				// 		event->set_priority();
+				// }
 				thread = execution->getFuzzer()->selectThreadbyid(thread_with_largest_pri);
 				assert(thread != NULL);
 			}
