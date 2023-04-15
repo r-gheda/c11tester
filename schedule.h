@@ -150,9 +150,6 @@ private:
 	int highest_id;
 
 	SnapVector<bool> external_readnum_thread;
-
-	std::unordered_map<ModelAction*, float> priority_map;
-
 };
 
 #endif	/* __SCHEDULE_H__ */

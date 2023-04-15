@@ -277,6 +277,12 @@ private:
 	bool bag_flag;
 	bool read_external_flag;
 	SnapVector<ModelAction* > * bag;
+
+	private:
+	float priority;
+	public:
+	float get_priority() const;
+	void set_priority();
 };
 
 #endif	/* __ACTION_H__ */
