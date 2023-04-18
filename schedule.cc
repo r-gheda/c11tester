@@ -706,7 +706,7 @@ Thread * Scheduler::select_next_thread()
 		if (true)
 		{
 			// if ((getSchelen() % schelen_limit == 0 && getSchelen() != 0) || (getSchelen() > 10 * schelen_limit))
-			if (false)
+			if (true)
 			{
 				if (!livelock)
 				{
