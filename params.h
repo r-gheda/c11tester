@@ -14,6 +14,16 @@ struct model_params {
 
 	/** @brief Verbosity (0 = quiet; 1 = noisy; 2 = noisier) */
 	int verbose;
+
+	// int maxscheduler;
+	int bugdepth;
+	int version;
+
+	//pctwm params
+	int maxinstr;
+	int history;
+	
+	uint64_t seed;
 };
 
 void param_defaults(struct model_params *params);

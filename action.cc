@@ -43,7 +43,11 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	bag_flag(false),
+	read_external_flag(false),
+	bag(new SnapVector<ModelAction *> ()),
+	priority((float)random() / (float)RAND_MAX)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc || type == ATOMIC_FENCE || type == ATOMIC_NOP);
@@ -75,7 +79,11 @@ ModelAction::ModelAction(action_type_t type, memory_order order, uint64_t value,
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	bag_flag(false),
+	read_external_flag(false),
+	bag(new SnapVector<ModelAction *> ()),
+	priority((float)random() / (float)RAND_MAX)
 {
 	Thread *t = thread_current();
 	this->tid = t!= NULL ? t->get_id() : -1;
@@ -106,7 +114,11 @@ ModelAction::ModelAction(action_type_t type, memory_order order, void *loc,
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	bag_flag(false),
+	read_external_flag(false),
+	bag(new SnapVector<ModelAction *> ()),
+	priority((float)random() / (float)RAND_MAX)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
@@ -140,7 +152,11 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	bag_flag(false),
+	read_external_flag(false),
+	bag(new SnapVector<ModelAction *> ()),
+	priority((float)random() / (float)RAND_MAX)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc);
@@ -175,7 +191,11 @@ ModelAction::ModelAction(action_type_t type, const char * position, memory_order
 	type(type),
 	order(order),
 	original_order(order),
-	seq_number(ACTION_INITIAL_CLOCK)
+	seq_number(ACTION_INITIAL_CLOCK),
+	bag_flag(false),
+	read_external_flag(false),
+	bag(new SnapVector<ModelAction *> ()),
+	priority((float)random() / (float)RAND_MAX)
 {
 	/* References to NULL atomic variables can end up here */
 	ASSERT(loc || type == ATOMIC_FENCE);
@@ -201,6 +221,8 @@ ModelAction::~ModelAction()
 	if (rf_cv)
 		delete rf_cv;
 }
+
+
 
 int ModelAction::getSize() const {
 	return size;
@@ -495,6 +517,7 @@ bool ModelAction::could_synchronize_with(const ModelAction *act) const
 
 	// Explore interleavings of seqcst writes/fences to guarantee total
 	// order of seq_cst operations that don't commute
+	// fence_seqcst can synchronize with write/fence_seqcst
 	if ((could_be_write() || act->could_be_write() || is_fence() || act->is_fence()) && is_seqcst() && act->is_seqcst())
 		return true;
 
@@ -768,4 +791,67 @@ cdsc::mutex * ModelAction::get_mutex() const
 		return (cdsc::mutex *)get_value();
 	else
 		return NULL;
+}
+
+
+// weak memory related functions
+void ModelAction::init_bagflag(){
+	bag_flag = false;
+	read_external_flag = false;
+}
+
+void ModelAction::set_bag(SnapVector<ModelAction*> *E){
+	bag_flag = true;
+	bag = E;
+}
+
+bool ModelAction::checkbag(){
+	return bag_flag;
+}
+
+void ModelAction::set_external_flag(){
+	read_external_flag = true;
+}
+
+void ModelAction::reset_external_flag(){
+	read_external_flag = false;
+}
+
+bool ModelAction::checkexternal(){
+	return read_external_flag;
+}
+
+void ModelAction::print_bag(){
+	if(bag_flag){
+		//model_print("This action has bag: size is %d, ", bag->size());
+		uint baglen = bag->size();
+		for(uint i = 0; i < baglen; i++){
+			ModelAction* curr = (*bag)[i];
+			model_print("action: seqnum: %u, location: %14p, value: %u. ", 
+			curr->get_seq_number(), curr->get_location(), curr->get_value());
+		}
+		model_print("\n");
+	}
+	else{
+		model_print("This action has no bag. \n");
+	}
+}
+
+SnapVector<ModelAction*> * ModelAction::get_bag(){
+	return bag;
+}
+
+bool ModelAction::in_count() const{
+	if(is_write() && (is_seqcst()||is_release())) return true; // write_seqcst 
+	else if(is_read()) return true; // all read
+	else if(is_fence() && is_acquire()) return true; //fence_rel(write), fence_acq fence_acq_rel fence_seqcst(read)
+	else return false;
+}
+
+float ModelAction::get_priority() const{
+	return priority;
+}
+
+void ModelAction::set_priority(){
+	priority = (float)random() / (float)RAND_MAX;
 }
