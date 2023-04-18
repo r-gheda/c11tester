@@ -199,6 +199,8 @@ Other Notes and Pitfalls
             Access 1: write in thread  2 @ clock   4
             Access 2:  read in thread  3 @ clock   9
 
+// TODO: Add other possible pitfalls
+
 
 See Also
 --------
@@ -216,15 +218,7 @@ The C11Tester source and accompanying benchmarks on Gitweb:
 >   <http://plrg.eecs.uci.edu/git/?p=c11concurrency-benchmarks.git>
 
 
-
-Contact
--------
-
-Please feel free to contact us for more information. Bug reports are welcome,
-and we are happy to hear from our users. We are also very interested to know if
-C11Tester catches bugs in your programs.
-
-Contact Weiyu Luo at <weiyul7@uci.edu> or Brian Demsky at <bdemsky@uci.edu>.
+// TODO :
 
 
 Copyright
@@ -235,16 +229,13 @@ Copyright &copy; 2013 and 2019 Regents of the University of California. All righ
 C11Tester is distributed under the GPL v2. See the LICENSE file for details.
 
 
+// TODO : Insert the copyright of POS 
+
+
 Acknowledgments
 ---------------
 
-This material is based upon work supported by the National Science
-Foundation under Grant Numbers 1740210 and 1319786 and Google Research 
-awards.
-
-Any opinions, findings, and conclusions or recommendations expressed in
-this material are those of the author(s) and do not necessarily reflect
-the views of the National Science Foundation.
+// TODO : Add acknowledgements
 
 
 References
@@ -252,3 +243,5 @@ References
 
 [1] L. Lamport. Time, clocks, and the ordering of events in a distributed
     system. CACM, 21(7):558-565, July 1978.
+
+// TODO : add reference for POS
