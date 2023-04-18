@@ -7,7 +7,6 @@
 *.dot
 .*.d
 *.pdf
-**C11FuzzerTmp**
 
 # files in this directory
 /tags

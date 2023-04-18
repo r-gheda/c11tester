@@ -9,29 +9,10 @@ int Fuzzer::selectWrite(ModelAction *read, SnapVector<ModelAction *> * rf_set) {
 	return random_index;
 }
 
-int Fuzzer::find_idx(SnapVector<ModelAction *> * rf_set, ModelAction* chosen_wr){
-	int index = -1;
-	for(uint i = 0; i < rf_set->size(); i++){
-		ModelAction* curr = (*rf_set)[i];
-		if(curr == chosen_wr){
-			index = i;
-			break;
-		}
-	}
-	return index;
-}
-
 Thread * Fuzzer::selectThread(int * threadlist, int numthreads) {
 	int random_index = random() % numthreads;
 	int thread = threadlist[random_index];
 	thread_id_t curr_tid = int_to_id(thread);
-	return model->get_thread(curr_tid);
-}
-
-// select thread by the id picked by scheduler
-Thread * Fuzzer::selectThreadbyid(int threadid) {
-
-	thread_id_t curr_tid = int_to_id(threadid);
 	return model->get_thread(curr_tid);
 }
 
