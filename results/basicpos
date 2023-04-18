@@ -1,0 +1,15 @@
+** Test CDSChecker data structure benchmarks **
+barrier Runs: 100 | Data races: 77 | Total time: 1440ms
+Time: 15ms | Race rate: 77.0%
+chase-lev-deque Runs: 100 | Data races: 77 | Total time: 1120ms
+Time: 12ms | Race rate: 77.0%
+dekker-fences Runs: 100 | Data races: 13 | Total time: 1430ms
+Time: 15ms | Race rate: 13.0%
+linuxrwlocks Runs: 100 | Data races: 51 | Total time: 890ms
+Time: 9ms | Race rate: 51.0%
+mcs-lock Runs: 100 | Data races: 46 | Total time: 1020ms
+Time: 11ms | Race rate: 46.0%
+mpmc-queue Runs: 100 | Data races: 55 | Total time: 640ms
+Time: 7ms | Race rate: 55.0%
+ms-queue Runs: 100 | Data races: 100 | Total time: 810ms
+Time: 9ms | Race rate: 100.0%
