@@ -111,21 +111,7 @@ public:
 	void * get_stack_addr() { return stack; }
 	ClockVector * get_acq_fence_cv() { return acq_fence_cv; }
 
-	
-	// weak memory functions declaration
-	ModelAction* get_same_location_act(ModelAction* act);
-	void init_vec();
-	void print_local_vec();
-	void set_local_vec(SnapVector<ModelAction*> * newvec);
-	void update_local_vec(ModelAction* act);
-	SnapVector<ModelAction*> * get_local_vec() const { return local_vec; }
-	uint get_localvec_size();
-
 	friend void thread_startup();
-
-	
-
-
 #ifdef TLS
 	friend void setup_context();
 	friend void * helper_thread(void *);
@@ -155,10 +141,6 @@ public:
 #endif
 private:
 	int create_context();
-
-	// weak memory: the vector to save each variable value
-	/** @brief The local vector in one Thread */
-	SnapVector<ModelAction*> *local_vec; // the vector to save each variable newest value
 
 	/** @brief The parent Thread which created this Thread */
 	Thread * const parent;

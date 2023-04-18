@@ -87,7 +87,6 @@ private:
 
 	unsigned int get_num_threads() const;
 
-
 	void finish_execution(bool moreexecutions);
 	bool should_terminate_execution();
 
@@ -113,5 +112,5 @@ extern ModelChecker *model;
 void parse_options(struct model_params *params);
 void install_trace_analyses(ModelExecution *execution);
 void createModelIfNotExist();
-void print_params(struct model_params *params);
+
 #endif	/* __MODEL_H__ */
