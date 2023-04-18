@@ -74,3 +74,65 @@ mpmc-queue Runs: 100 | Data races: 50 | Total time: 440ms
 Time: 5ms | Race rate: 50.0%
 ms-queue Runs: 100 | Data races: 100 | Total time: 1020ms
 Time: 11ms | Race rate: 100.0%
+
+
+'-x1 -p1 -y5'
+
+
+** Test CDSChecker data structure benchmarks **
+barrier Runs: 100 | Data races: 74 | Total time: 410ms
+Time: 5ms | Race rate: 74.0%
+chase-lev-deque Runs: 100 | Data races: 93 | Total time: 1100ms
+Time: 12ms | Race rate: 93.0%
+dekker-fences Runs: 100 | Data races: 19 | Total time: 690ms
+Time: 7ms | Race rate: 19.0%
+linuxrwlocks Runs: 100 | Data races: 87 | Total time: 390ms
+Time: 4ms | Race rate: 87.0%
+mcs-lock Runs: 100 | Data races: 91 | Total time: 640ms
+Time: 7ms | Race rate: 91.0%
+mpmc-queue Runs: 100 | Data races: 53 | Total time: 720ms
+Time: 8ms | Race rate: 53.0%
+ms-queue Runs: 100 | Data races: 100 | Total time: 520ms
+Time: 6ms | Race rate: 100.0%
+
+
+
+'-x1 -p1 -y6'
+
+** Test CDSChecker data structure benchmarks **
+barrier Runs: 100 | Data races: 72 | Total time: 380ms
+Time: 4ms | Race rate: 72.0%
+chase-lev-deque Runs: 100 | Data races: 98 | Total time: 340ms
+Time: 4ms | Race rate: 98.0%
+dekker-fences Runs: 100 | Data races: 17 | Total time: 230ms
+Time: 3ms | Race rate: 17.0%
+linuxrwlocks Runs: 100 | Data races: 80 | Total time: 180ms
+Time: 2ms | Race rate: 80.0%
+mcs-lock Runs: 100 | Data races: 93 | Total time: 290ms
+Time: 3ms | Race rate: 93.0%
+mpmc-queue Runs: 100 | Data races: 66 | Total time: 250ms
+Time: 3ms | Race rate: 66.0%
+ms-queue Runs: 100 | Data races: 100 | Total time: 470ms
+Time: 5ms | Race rate: 100.0%
+
+
+'-x1 -p1 -y8'
+
+
+** Test CDSChecker data structure benchmarks **
+barrier Runs: 100 | Data races: 82 | Total time: 400ms
+Time: 4ms | Race rate: 82.0%
+chase-lev-deque Runs: 100 | Data races: 98 | Total time: 330ms
+Time: 4ms | Race rate: 98.0%
+dekker-fences Runs: 100 | Data races: 28 | Total time: 390ms
+Time: 4ms | Race rate: 28.0%
+linuxrwlocks Runs: 100 | Data races: 93 | Total time: 310ms
+Time: 4ms | Race rate: 93.0%
+mcs-lock Runs: 100 | Data races: 91 | Total time: 400ms
+Time: 4ms | Race rate: 91.0%
+mpmc-queue Runs: 100 | Data races: 63 | Total time: 680ms
+Time: 7ms | Race rate: 63.0%
+ms-queue Runs: 100 | Data races: 100 | Total time: 590ms
+Time: 6ms | Race rate: 100.0%
+
+
